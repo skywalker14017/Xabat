@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands, tasks
 import os
+import threading
+from flask import Flask
 import re
 import time
 import aiosqlite
@@ -1001,6 +1003,22 @@ async def on_ready():
             commands_synced = True
         except Exception as e:
             print(e)
+# --- RENDER HEALTH CHECK KEEP-ALIVE ---
+web_app = Flask('')
 
+@web_app.route('/')
+def home():
+    return "Xabat Bot is active!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    web_app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = threading.Thread(target=run_web)
+    t.daemon = True
+    t.start()
+    
 if __name__ == "__main__":
+    keep_alive()
     bot.run(BOT_TOKEN)
