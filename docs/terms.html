@@ -1,93 +1,382 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="index,follow">
-  <title>Terms of Service — Xabat</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #0f1115;
-      --card: #171a21;
-      --text: #f2f4f7;
-      --muted: #aab1bd;
-      --border: #2b313d;
-      --accent: #5865f2;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f5f7fb;
-        --card: #ffffff;
-        --text: #16181d;
-        --muted: #5d6572;
-        --border: #e1e5ec;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.7;
-    }
-    main {
-      width: min(900px, calc(100% - 32px));
-      margin: 48px auto;
-    }
-    article {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: clamp(24px, 5vw, 52px);
-      box-shadow: 0 10px 40px rgba(0,0,0,.18);
-    }
-    h1 {
-      margin-top: 0;
-      line-height: 1.2;
-      font-size: clamp(30px, 5vw, 44px);
-    }
-    h2 {
-      margin-top: 2em;
-      line-height: 1.3;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: .35em;
-    }
-    h3 { margin-top: 1.5em; }
-    p, li { font-size: 16px; }
-    li { margin: .45em 0; }
-    a { color: var(--accent); }
-    .subtitle {
-      color: var(--muted);
-      margin-top: -10px;
-      margin-bottom: 32px;
-    }
-    footer {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 28px;
-      text-align: center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xabat - Terms of Service</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a12;
+            --bg-card: rgba(20, 20, 31, 0.7);
+            --text-main: #e0e0e0;
+            --text-dim: #8888a0;
+            --accent-pink: #ff79c6;
+            --accent-cyan: #8be9fd;
+            --accent-purple: #bd93f9;
+            --border-glow: rgba(189, 147, 249, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.7;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Whimsical Background Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.4;
+            animation: float 15s ease-in-out infinite;
+        }
+        .orb-1 { top: -10%; left: -5%; width: 400px; height: 400px; background: var(--accent-purple); }
+        .orb-2 { bottom: -10%; right: -5%; width: 500px; height: 500px; background: var(--accent-pink); animation-delay: -5s; }
+        .orb-3 { top: 40%; left: 50%; width: 300px; height: 300px; background: var(--accent-cyan); animation-delay: -10s; opacity: 0.2; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 40px); }
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            flex: 1;
+        }
+
+        /* Cards & Typography */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: border-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-3px);
+        }
+
+        .card h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .card h2::before {
+            content: '';
+            display: block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-pink);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-pink);
+            flex-shrink: 0;
+        }
+
+        .card p { margin-bottom: 1rem; color: #cccccc; }
+        .card p:last-child { margin-bottom: 0; }
+
+        .card ul { list-style: none; margin-left: 1rem; margin-bottom: 1rem; }
+        .card ul li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #cccccc;
+        }
+        .card ul li::before {
+            content: '◆';
+            position: absolute;
+            left: 0;
+            top: 1px;
+            color: var(--accent-purple);
+            font-size: 0.8rem;
+        }
+
+        .meta-text {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+
+        strong { color: white; font-weight: 600; }
+
+        /* Footer */
+        footer {
+            background: rgba(10, 10, 18, 0.8);
+            border-top: 1px solid rgba(189, 147, 249, 0.2);
+            padding: 3rem 2rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            margin-top: 2rem;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        footer p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        footer .emergency {
+            color: var(--accent-pink);
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+
+        /* Back to top button */
+        #toTop {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-purple);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(189, 147, 249, 0.3);
+        }
+
+        #toTop.visible { opacity: 1; pointer-events: auto; }
+        #toTop:hover { transform: scale(1.1); background: var(--accent-purple); }
+        #toTop::before { content: '↑'; font-size: 1.5rem; color: white; }
+
+        @media (max-width: 768px) {
+            .card { padding: 1.5rem; }
+            header { padding: 5rem 1rem 3rem; }
+        }
+    </style>
 </head>
 <body>
-  <main>
-    <article>
-      <p>Welcome to Xabat. By using Xabat, interacting with its Direct Messages (DMs), or utilizing any of its commands within our Discord server, you agree to comply with and be bound by the following Terms of Service.</p>
-<p>If you do not agree with these terms, please do not use the Bot.</p>
-<ol>
-<li>Nature of the Service Xabat is a civilian-run reporting and triage tool designed to facilitate the secure submission of tips, evidence, and reports regarding online predation, grooming, and sexual abuse.  Not Law Enforcement: The Moderation Team operating Xabat are private civilians, not law enforcement officers or legal professionals.  Tip Line Only: Xabat functions as an anonymous tip line and evidence-gathering tool. The Moderation Team reviews reports and may forward them to official authorities (e.g., Discord Trust &amp; Safety, NCMEC, or local cybercrime units). The Team does not conduct arrests or legal prosecutions.</li>
-<li>Acceptable Use &amp; Prohibited Content To protect our Moderation Team, comply with the law, and ensure Xabat functions safely, the following rules strictly apply to all uploads and reports: Zero Tolerance for CSAM: You MUST NOT upload Child Sexual Abuse Material (CSAM) or explicit nudity.  AI Scanning: All image uploads are automatically scanned by a local AI model (NudeNet) prior to reaching our Moderation Team. If an image is flagged as explicit, it will be instantly blocked, deleted from our system, and rejected. Cropping Requirement: If your chat logs contain explicit images or CSAM sent by a predator, you must crop or redact the explicit portions so that only the text of the conversation is visible. We only need to see the text to verify the report. Accuracy: You agree to provide accurate information to the best of your knowledge. Submitting false reports, spamming Xabat, or attempting to use the Bot to harass innocent individuals is strictly prohibited and may result in a ban from the server.</li>
-<li>Anonymity &amp; Privacy When you submit a report using Xabat, you are given the choice to remain &quot;Anonymous&quot; or &quot;Share My Discord Name.&quot; If you choose Anonymous, your Discord username will be hidden from the Moderation Team. However, Xabat securely stores your Discord User ID in its backend database so moderators can reply to you via the /reply command if they need more information. If you choose to Share Your Name, your Discord mention and username will be visible to the Moderation Team alongside your report. For full details on data retention, storage, and deletion, please review our Privacy Policy.</li>
-<li>Data Retention &amp; Deletion Xabat utilizes an automated background cleanup system to protect your data: Upload Sessions: If you start a report but do not finish uploading screenshots within 10 minutes of inactivity (or 1 hour total), the session data is automatically deleted. Case Evidence Threads: Evidence threads in our secure channel are automatically deleted 4 months (120 days) after they are created. Closed Reports: Text data for cases marked &quot;Resolved&quot; or &quot;False Report&quot; is automatically deleted 180 days (6 months) after the closure date.</li>
-<li>Limitation of Liability The Moderation Team provides Xabat on an &quot;as is&quot; and &quot;as available&quot; basis. By using the Bot, you acknowledge that: We are not responsible for Discord&#x27;s automated systems, API downtime, or Discord Trust &amp; Safety actions (such as server bans resulting from automated image hashing). We do not guarantee a specific legal outcome, immediate response time, or the successful prosecution of a reported predator.  The Moderation Team consists of volunteers. We will review evidence as quickly as possible, but we cannot guarantee 24/7 immediate response times.</li>
-<li>Moderation Actions The Moderation Team reserves the right to close a report, mark it as a &quot;False Report,&quot; or refuse to process evidence at any time if: The report violates these Terms of Service. The evidence contains illegal material that was not properly redacted. The report is deemed to be bad faith, spam, or retaliatory.</li>
-<li>Changes to These Terms We reserve the right to modify these Terms of Service at any time. If we make significant changes, we will post a notification in the server. We encourage you to review these terms periodically.</li>
-<li>Contact Us If you have questions, concerns, or requests regarding these Terms of Service or your data, please use the /system issue command to submit a private ticket to the development team, or contact a server Administrator directly.</li>
-</ol>
-    </article>
-    <footer>Xabat</footer>
-  </main>
+
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <header>
+        <h1>Terms of Service</h1>
+        <p class="subtitle">Xabat</p>
+    </header>
+
+    <div class="container">
+        <p class="meta-text">Last Updated: August 15, 2026</p>
+        
+        <div class="card">
+            <p>Welcome to Xabat. By using Xabat, interacting with its Direct Messages (DMs), or using any of its commands through Xabat, you agree to these Terms of Service.<br><br>If you do not agree with these Terms, please do not use Xabat.</p>
+        </div>
+
+        <div class="card">
+            <h2>1. Nature of the Service</h2>
+            <p>Xabat is a civilian-run reporting and triage tool designed to facilitate the submission, organization, and review of reports concerning online predation, grooming, sexual abuse, sextortion, child endangerment, and related incidents.</p>
+            <p>Xabat and its moderation team are not law-enforcement agencies, government authorities, lawyers, investigators, or courts.</p>
+            <p>The moderation team consists of private individuals and volunteers who review submitted reports and may, where appropriate, forward relevant information to platforms, organizations, or authorities such as Discord Trust & Safety, NCMEC, or relevant cybercrime authorities.</p>
+            <p>Submitting a report does not guarantee that an investigation, arrest, prosecution, or other legal action will occur.</p>
+        </div>
+
+        <div class="card">
+            <h2>2. Acceptable Use</h2>
+            <p>Xabat must only be used for legitimate reporting, safety, moderation, and related purposes.</p>
+            <ul>
+                <li>Provide information honestly and to the best of your knowledge.</li>
+                <li>Submit reports concerning genuine safety concerns.</li>
+                <li>Avoid intentionally misleading, fabricated, retaliatory, or malicious reports.</li>
+                <li>Avoid using Xabat to harass, threaten, dox, impersonate, or target innocent individuals.</li>
+                <li>Follow Discord's applicable Terms, policies, and rules.</li>
+                <li>Follow applicable laws.</li>
+            </ul>
+            <p>Xabat may restrict or terminate access for users who abuse the reporting system.</p>
+        </div>
+
+        <div class="card">
+            <h2>3. Prohibited Evidence</h2>
+            <p><strong>You MUST NOT upload Child Sexual Abuse Material (CSAM), explicit sexual images, or other illegal sexual material to Xabat.</strong></p>
+            <p>This prohibition exists to protect reporters, moderators, infrastructure providers, and other users.</p>
+            <p>If a conversation contains explicit imagery or CSAM, crop or redact the imagery before submitting the screenshot whenever reasonably possible. Xabat generally only needs the relevant text of the conversation to evaluate a report.</p>
+            <p>Xabat automatically screens submitted images using NudeNet before an image is forwarded to the moderation team.</p>
+            <p>The automated scanner is a safety mechanism and is not guaranteed to detect every form of explicit or illegal material. Its presence does not give users permission to submit prohibited material.</p>
+            <p>If an image is flagged, Xabat rejects the upload and does not forward it to the Xabat moderation team or retain it as case evidence. Temporary processing data used for scanning is deleted after processing.</p>
+        </div>
+
+        <div class="card">
+            <h2>4. Evidence Review</h2>
+            <p>Images that pass automated screening may be placed into a restricted moderation queue.</p>
+            <p>Authorized moderators may review submitted evidence and may:</p>
+            <ul>
+                <li>Approve evidence for inclusion in a case.</li>
+                <li>Delete evidence.</li>
+                <li>Request additional information.</li>
+                <li>Close a report.</li>
+                <li>Mark a report as false or invalid where appropriate.</li>
+                <li>Escalate relevant information to an appropriate platform, organization, or authority.</li>
+            </ul>
+            <p>Automated screening does not constitute a legal determination or a determination that an image is lawful.</p>
+        </div>
+
+        <div class="card">
+            <h2>5. Anonymous Reporting</h2>
+            <p>Xabat provides an option to submit a report without displaying the reporter's Discord username to moderators.</p>
+            <p>Choosing Stay Anonymous means your Discord identity will not be displayed within the report to the moderation team.</p>
+            <p>However, anonymous reporting does not mean that Xabat has no record connecting the report to the submitting Discord account. Xabat stores the Discord user ID internally so that reports can be managed and, where necessary, the reporter can be contacted.</p>
+            <p>Choosing Share My Discord Name allows your Discord identity to be displayed alongside the report.</p>
+            <p>For additional information, see the Xabat Privacy Policy.</p>
+        </div>
+
+        <div class="card">
+            <h2>6. Data Retention</h2>
+            <p>Xabat uses automated cleanup mechanisms to limit retention of sensitive information.</p>
+            <ul>
+                <li><strong>Incomplete upload sessions:</strong> deleted after 10 minutes of inactivity or 1 hour after creation.</li>
+                <li><strong>Rate-limit information:</strong> automatically cleaned after approximately 24 hours.</li>
+                <li><strong>Evidence threads:</strong> automatically deleted approximately 120 days after creation.</li>
+                <li><strong>Closed report records:</strong> automatically deleted approximately 180 days after closure.</li>
+            </ul>
+            <p>Active reports may remain available for as long as reasonably necessary for moderation and case handling.</p>
+            <p>These periods apply to Xabat-controlled data. Third-party services such as Discord may have separate storage and retention practices.</p>
+        </div>
+
+        <div class="card">
+            <h2>7. Reports and Legal Action</h2>
+            <p>Xabat does not determine whether a reported person is guilty of a crime.</p>
+            <p>Reports submitted through Xabat are allegations and may contain incomplete, inaccurate, or disputed information.</p>
+            <p>Where appropriate, the moderation team may forward relevant information to Discord Trust & Safety, NCMEC, law-enforcement agencies, cybercrime authorities, or other appropriate organizations.</p>
+            <p>The moderation team does not guarantee that any recipient will investigate a report or take legal action.</p>
+        </div>
+
+        <div class="card">
+            <h2>8. Moderation Actions</h2>
+            <p>The moderation team may refuse, restrict, delete, or close reports or evidence when reasonably necessary, including when:</p>
+            <ul>
+                <li>These Terms are violated.</li>
+                <li>Prohibited or illegal material is submitted.</li>
+                <li>Evidence has not been appropriately redacted.</li>
+                <li>A report appears to be fabricated, malicious, retaliatory, or abusive.</li>
+                <li>The reporting system is being spammed or otherwise abused.</li>
+                <li>Processing the material would create an unreasonable safety, legal, or operational risk.</li>
+                <li>The report falls outside the purpose of Xabat.</li>
+            </ul>
+            <p>Access to Xabat may also be restricted or revoked for users who repeatedly violate these Terms.</p>
+        </div>
+
+        <div class="card">
+            <h2>9. No Guarantee of Availability or Results</h2>
+            <p>Xabat is provided on an "as is" and "as available" basis to the extent permitted by applicable law.</p>
+            <p>The moderation team does not guarantee 24/7 availability, immediate responses, successful delivery of a report or evidence, a particular moderation decision, a particular legal outcome, an investigation, arrest, prosecution, conviction, or other action against a reported individual, or continuous operation of Discord, Xabat, or third-party infrastructure.</p>
+        </div>
+
+        <div class="card">
+            <h2>10. Third-Party Services</h2>
+            <p>Xabat operates through third-party infrastructure, including Discord and hosting providers.</p>
+            <p>Xabat is not responsible for independent actions, outages, moderation decisions, content policies, or technical limitations imposed by third-party services.</p>
+            <p>Users remain subject to the applicable terms and policies of those services.</p>
+        </div>
+
+        <div class="card">
+            <h2>11. User Responsibility</h2>
+            <p>You are responsible for the information and material you submit through Xabat.</p>
+            <p>You must not intentionally submit material that you know to be fabricated, malicious, illegal, or unrelated to the purpose of the reporting system.</p>
+            <p>Nothing in these Terms requires you to provide information that would place you or another person at unreasonable risk.</p>
+        </div>
+
+        <div class="card">
+            <h2>12. Limitation of Liability</h2>
+            <p>To the maximum extent permitted by applicable law, Xabat and its operators, developers, moderators, and volunteers are not liable for indirect, incidental, consequential, or unforeseeable losses arising from the use or inability to use Xabat.</p>
+            <p>Nothing in these Terms is intended to exclude or limit liability that cannot legally be excluded or limited under applicable law.</p>
+        </div>
+
+        <div class="card">
+            <h2>13. Changes to These Terms</h2>
+            <p>We may update these Terms when Xabat's functionality, policies, or legal requirements change.</p>
+            <p>The current version of these Terms will be made available through Xabat's official legal documentation.</p>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <p>Xabat is a civilian reporting and triage tool. It is not a substitute for law enforcement, emergency services, legal advice, or professional support.</p>
+            <p class="emergency">If someone is in immediate danger, contact the appropriate emergency services or relevant authorities.</p>
+        </div>
+    </footer>
+
+    <div id="toTop" onclick="scrollTop()"></div>
+
+    <script>
+        const toTopBtn = document.getElementById('toTop');
+        window.onscroll = function() {
+            if (document.body.scrollTop > 400 || document.documentElement.scrollTop > 400) {
+                toTopBtn.classList.add('visible');
+            } else {
+                toTopBtn.classList.remove('visible');
+            }
+        };
+
+        function scrollTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
 </body>
 </html>
