@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>Privacy Policy — Xabat</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #f2f4f7;
+      --muted: #aab1bd;
+      --border: #2b313d;
+      --accent: #5865f2;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --text: #16181d;
+        --muted: #5d6572;
+        --border: #e1e5ec;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7;
+    }
+    main {
+      width: min(900px, calc(100% - 32px));
+      margin: 48px auto;
+    }
+    article {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(24px, 5vw, 52px);
+      box-shadow: 0 10px 40px rgba(0,0,0,.18);
+    }
+    h1 {
+      margin-top: 0;
+      line-height: 1.2;
+      font-size: clamp(30px, 5vw, 44px);
+    }
+    h2 {
+      margin-top: 2em;
+      line-height: 1.3;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: .35em;
+    }
+    h3 { margin-top: 1.5em; }
+    p, li { font-size: 16px; }
+    li { margin: .45em 0; }
+    a { color: var(--accent); }
+    .subtitle {
+      color: var(--muted);
+      margin-top: -10px;
+      margin-bottom: 32px;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 28px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <article>
+      <p>This Privacy Policy explains how the Moderation Team (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses, stores, and protects your information when you use the Xabat Discord Bot (&quot;Xabat&quot; or the &quot;Bot&quot;).</p>
+<p>Given the highly sensitive nature of the reports Xabat is designed to handle, we are committed to maintaining the highest standards of privacy, security, and user protection.</p>
+<ol>
+<li>Information We Collect</li>
+</ol>
+<p>When you interact with Xabat to submit a report, we collect the following information:</p>
+<p>A. Information You Provide: Report Details: The category of the incident (e.g., Grooming, Sexual Abuse), the predator&#x27;s online name/handle, the predator&#x27;s age, the victim&#x27;s age, the country/jurisdiction, and the full text details of the incident you provide. Media Files: Any image screenshots (.png, .jpg, .jpeg, .gif, .webp) you upload directly to Xabat via Direct Message (DM).</p>
+<p>B. Information Automatically Collected: Discord User ID: Your unique Discord ID is collected to associate you with the report, enforce rate limits, and facilitate anonymous or direct 2-way DM replies. Metadata: Timestamps of when the report was created, last activity, and when the case was closed.</p>
+<ol>
+<li>Anonymity &amp; 2-Way Communication</li>
+</ol>
+<p>You have the choice to submit a report &quot;Anonymous&quot; or &quot;Share My Discord Name.&quot;</p>
+<p>If you choose Anonymous: Your Discord username and profile are hidden from the Moderation Team. However, please be aware that Xabat securely stores your Discord User ID in its backend database. This is strictly so moderators can use the /reply command to communicate with you if they need more information. Moderators cannot see your username, only a label that says &quot;Anonymous.&quot;</p>
+<p>If you choose to Share Your Name: Your Discord mention and username will be displayed to the Moderation Team alongside your report.</p>
+<p>2-Way DM Replies: If a moderator uses /reply to message you, you can reply directly to Xabat&#x27;s DM. Xabat stores the ID of the moderator&#x27;s message to route your reply back to the correct case.</p>
+<ol>
+<li>AI Scanning &amp; Explicit Content Blocking</li>
+</ol>
+<p>To protect our team and comply with the law, all image uploads go through a strict automated scanning process before reaching the Moderation Team:</p>
+<p>Local AI Scan: When you upload an image, Xabat downloads it to temporary RAM and scans it using a local, open-source AI model called NudeNet. Fail-Closed System: If the AI detects explicit nudity (e.g., exposed genitals or breasts), the image is instantly blocked and deleted. It never reaches the Moderation Team or our Discord server. Furthermore, if the AI system crashes or fails to load, Xabat will automatically block all image uploads to ensure no explicit material slips through. Manual Triage: If an image passes the AI scan, it is sent to a restricted channel where a moderator must click &quot;Approve&quot; before it is officially added to the case file. If a moderator clicks &quot;Nuke&quot; (Delete), the image is instantly removed from Discord.</p>
+<ol>
+<li>Data Storage and Security</li>
+</ol>
+<p>A. Storage Location: Text Data: Report text, ages, and metadata are stored in a local, password-protected SQLite database (reports.db) hosted on the Bot&#x27;s private server. Media Files: Uploaded screenshots are sent to a highly restricted, private Discord channel (#pedo-proof) visible only to designated Administrators.</p>
+<p>B. Access Control: Access to the database and the #pedo-proof channel is strictly limited to the designated server Administrators.</p>
+<ol>
+<li>Data Retention &amp; Automated Deletion</li>
+</ol>
+<p>We do not keep your data forever. Xabat utilizes an automated background cleanup task to protect your privacy:</p>
+<p>Upload Sessions: If you start a report but do not finish uploading screenshots within 10 minutes of inactivity (or 1 hour total), the session data is automatically deleted. Rate Limits: Rate limit data is automatically deleted after 24 hours. Case Evidence Threads: Evidence threads in Discord are automatically deleted 4 months (120 days) after they are created. Closed Reports: If a case is marked &quot;Resolved&quot; or &quot;False Report,&quot; the text data in the database is automatically deleted 180 days (6 months) after the closure date.</p>
+<ol>
+<li>Data Sharing and Disclosure</li>
+</ol>
+<p>We do not sell, trade, or rent your information. We will only share your report data under the following circumstances:</p>
+<p>Law Enforcement / Cybercrime Units: If a report contains credible threats or evidence of a crime, we will hand over the report details, text, and archived screenshots to the relevant authorities (e.g., NCMEC, FBI, local cybercrime units). Discord Trust &amp; Safety: We may forward report details and predator usernames to Discord to facilitate platform-wide bans. Legal Obligation: If required to comply with a subpoena, court order, or other legal process.</p>
+<ol>
+<li>Your Rights</li>
+</ol>
+<p>Right to Close Session: You can close an active upload session at any time by typing done or cancel in Xabat&#x27;s DMs. Right to Know &amp; Delete: You may request to know what data we hold regarding a specific report you submitted, or request the immediate deletion of a report and its evidence, by using the /system issue command to submit a private ticket to the development team.</p>
+<ol>
+<li>Children&#x27;s Privacy</li>
+</ol>
+<p>While Xabat is designed to protect minors and handle reports of child exploitation, the Bot itself is not directed at children under 13 (in compliance with Discord&#x27;s Terms of Service and COPPA). If a report involves a victim under 13, we will handle the data with extreme care and immediately involve the appropriate authorities.</p>
+<ol>
+<li>Changes to This Policy</li>
+</ol>
+<p>We may update this Privacy Policy from time to time. If we make significant changes, we will post a notification in the server. We encourage you to review this policy periodically.</p>
+<ol>
+<li>Contact Us</li>
+</ol>
+<p>If you have questions, concerns, or requests regarding this Privacy Policy or your data, please use the /system issue command to submit a private ticket to the development team, or contact a server Administrator directly.</p>
+    </article>
+    <footer>Xabat</footer>
+  </main>
+</body>
+</html>
