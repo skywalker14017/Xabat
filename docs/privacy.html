@@ -1,132 +1,370 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="index,follow">
-  <title>Privacy Policy — Xabat</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #0f1115;
-      --card: #171a21;
-      --text: #f2f4f7;
-      --muted: #aab1bd;
-      --border: #2b313d;
-      --accent: #5865f2;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f5f7fb;
-        --card: #ffffff;
-        --text: #16181d;
-        --muted: #5d6572;
-        --border: #e1e5ec;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.7;
-    }
-    main {
-      width: min(900px, calc(100% - 32px));
-      margin: 48px auto;
-    }
-    article {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: clamp(24px, 5vw, 52px);
-      box-shadow: 0 10px 40px rgba(0,0,0,.18);
-    }
-    h1 {
-      margin-top: 0;
-      line-height: 1.2;
-      font-size: clamp(30px, 5vw, 44px);
-    }
-    h2 {
-      margin-top: 2em;
-      line-height: 1.3;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: .35em;
-    }
-    h3 { margin-top: 1.5em; }
-    p, li { font-size: 16px; }
-    li { margin: .45em 0; }
-    a { color: var(--accent); }
-    .subtitle {
-      color: var(--muted);
-      margin-top: -10px;
-      margin-bottom: 32px;
-    }
-    footer {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 28px;
-      text-align: center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xabat - Privacy Policy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a12;
+            --bg-card: rgba(20, 20, 31, 0.7);
+            --text-main: #e0e0e0;
+            --text-dim: #8888a0;
+            --accent-pink: #ff79c6;
+            --accent-cyan: #8be9fd;
+            --accent-purple: #bd93f9;
+            --border-glow: rgba(189, 147, 249, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.7;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Whimsical Background Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.4;
+            animation: float 15s ease-in-out infinite;
+        }
+        .orb-1 { top: -10%; left: -5%; width: 400px; height: 400px; background: var(--accent-purple); }
+        .orb-2 { bottom: -10%; right: -5%; width: 500px; height: 500px; background: var(--accent-pink); animation-delay: -5s; }
+        .orb-3 { top: 40%; left: 50%; width: 300px; height: 300px; background: var(--accent-cyan); animation-delay: -10s; opacity: 0.2; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 40px); }
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            flex: 1;
+        }
+
+        /* Cards & Typography */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: border-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-3px);
+        }
+
+        .card h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .card h2::before {
+            content: '';
+            display: block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-pink);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-pink);
+            flex-shrink: 0;
+        }
+
+        .card p { margin-bottom: 1rem; color: #cccccc; }
+        .card p:last-child { margin-bottom: 0; }
+
+        .card ul { list-style: none; margin-left: 1rem; margin-bottom: 1rem; }
+        .card ul li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #cccccc;
+        }
+        .card ul li::before {
+            content: '◆';
+            position: absolute;
+            left: 0;
+            top: 1px;
+            color: var(--accent-purple);
+            font-size: 0.8rem;
+        }
+
+        .card ol { margin-left: 1.5rem; margin-bottom: 1rem; color: #cccccc; }
+        .card ol li { margin-bottom: 0.5rem; padding-left: 0.5rem; }
+        .card ol li::marker { color: var(--accent-pink); font-weight: bold; }
+
+        .meta-text {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+
+        strong { color: white; font-weight: 600; }
+
+        /* Footer */
+        footer {
+            background: rgba(10, 10, 18, 0.8);
+            border-top: 1px solid rgba(189, 147, 249, 0.2);
+            padding: 3rem 2rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            margin-top: 2rem;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        footer p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        footer .emergency {
+            color: var(--accent-pink);
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+
+        /* Back to top button */
+        #toTop {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-purple);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(189, 147, 249, 0.3);
+        }
+
+        #toTop.visible { opacity: 1; pointer-events: auto; }
+        #toTop:hover { transform: scale(1.1); background: var(--accent-purple); }
+        #toTop::before { content: '↑'; font-size: 1.5rem; color: white; }
+
+        @media (max-width: 768px) {
+            .card { padding: 1.5rem; }
+            header { padding: 5rem 1rem 3rem; }
+        }
+    </style>
 </head>
 <body>
-  <main>
-    <article>
-      <p>This Privacy Policy explains how the Moderation Team (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses, stores, and protects your information when you use the Xabat Discord Bot (&quot;Xabat&quot; or the &quot;Bot&quot;).</p>
-<p>Given the highly sensitive nature of the reports Xabat is designed to handle, we are committed to maintaining the highest standards of privacy, security, and user protection.</p>
-<ol>
-<li>Information We Collect</li>
-</ol>
-<p>When you interact with Xabat to submit a report, we collect the following information:</p>
-<p>A. Information You Provide: Report Details: The category of the incident (e.g., Grooming, Sexual Abuse), the predator&#x27;s online name/handle, the predator&#x27;s age, the victim&#x27;s age, the country/jurisdiction, and the full text details of the incident you provide. Media Files: Any image screenshots (.png, .jpg, .jpeg, .gif, .webp) you upload directly to Xabat via Direct Message (DM).</p>
-<p>B. Information Automatically Collected: Discord User ID: Your unique Discord ID is collected to associate you with the report, enforce rate limits, and facilitate anonymous or direct 2-way DM replies. Metadata: Timestamps of when the report was created, last activity, and when the case was closed.</p>
-<ol>
-<li>Anonymity &amp; 2-Way Communication</li>
-</ol>
-<p>You have the choice to submit a report &quot;Anonymous&quot; or &quot;Share My Discord Name.&quot;</p>
-<p>If you choose Anonymous: Your Discord username and profile are hidden from the Moderation Team. However, please be aware that Xabat securely stores your Discord User ID in its backend database. This is strictly so moderators can use the /reply command to communicate with you if they need more information. Moderators cannot see your username, only a label that says &quot;Anonymous.&quot;</p>
-<p>If you choose to Share Your Name: Your Discord mention and username will be displayed to the Moderation Team alongside your report.</p>
-<p>2-Way DM Replies: If a moderator uses /reply to message you, you can reply directly to Xabat&#x27;s DM. Xabat stores the ID of the moderator&#x27;s message to route your reply back to the correct case.</p>
-<ol>
-<li>AI Scanning &amp; Explicit Content Blocking</li>
-</ol>
-<p>To protect our team and comply with the law, all image uploads go through a strict automated scanning process before reaching the Moderation Team:</p>
-<p>Local AI Scan: When you upload an image, Xabat downloads it to temporary RAM and scans it using a local, open-source AI model called NudeNet. Fail-Closed System: If the AI detects explicit nudity (e.g., exposed genitals or breasts), the image is instantly blocked and deleted. It never reaches the Moderation Team or our Discord server. Furthermore, if the AI system crashes or fails to load, Xabat will automatically block all image uploads to ensure no explicit material slips through. Manual Triage: If an image passes the AI scan, it is sent to a restricted channel where a moderator must click &quot;Approve&quot; before it is officially added to the case file. If a moderator clicks &quot;Nuke&quot; (Delete), the image is instantly removed from Discord.</p>
-<ol>
-<li>Data Storage and Security</li>
-</ol>
-<p>A. Storage Location: Text Data: Report text, ages, and metadata are stored in a local, password-protected SQLite database (reports.db) hosted on the Bot&#x27;s private server. Media Files: Uploaded screenshots are sent to a highly restricted, private Discord channel (#pedo-proof) visible only to designated Administrators.</p>
-<p>B. Access Control: Access to the database and the #pedo-proof channel is strictly limited to the designated server Administrators.</p>
-<ol>
-<li>Data Retention &amp; Automated Deletion</li>
-</ol>
-<p>We do not keep your data forever. Xabat utilizes an automated background cleanup task to protect your privacy:</p>
-<p>Upload Sessions: If you start a report but do not finish uploading screenshots within 10 minutes of inactivity (or 1 hour total), the session data is automatically deleted. Rate Limits: Rate limit data is automatically deleted after 24 hours. Case Evidence Threads: Evidence threads in Discord are automatically deleted 4 months (120 days) after they are created. Closed Reports: If a case is marked &quot;Resolved&quot; or &quot;False Report,&quot; the text data in the database is automatically deleted 180 days (6 months) after the closure date.</p>
-<ol>
-<li>Data Sharing and Disclosure</li>
-</ol>
-<p>We do not sell, trade, or rent your information. We will only share your report data under the following circumstances:</p>
-<p>Law Enforcement / Cybercrime Units: If a report contains credible threats or evidence of a crime, we will hand over the report details, text, and archived screenshots to the relevant authorities (e.g., NCMEC, FBI, local cybercrime units). Discord Trust &amp; Safety: We may forward report details and predator usernames to Discord to facilitate platform-wide bans. Legal Obligation: If required to comply with a subpoena, court order, or other legal process.</p>
-<ol>
-<li>Your Rights</li>
-</ol>
-<p>Right to Close Session: You can close an active upload session at any time by typing done or cancel in Xabat&#x27;s DMs. Right to Know &amp; Delete: You may request to know what data we hold regarding a specific report you submitted, or request the immediate deletion of a report and its evidence, by using the /system issue command to submit a private ticket to the development team.</p>
-<ol>
-<li>Children&#x27;s Privacy</li>
-</ol>
-<p>While Xabat is designed to protect minors and handle reports of child exploitation, the Bot itself is not directed at children under 13 (in compliance with Discord&#x27;s Terms of Service and COPPA). If a report involves a victim under 13, we will handle the data with extreme care and immediately involve the appropriate authorities.</p>
-<ol>
-<li>Changes to This Policy</li>
-</ol>
-<p>We may update this Privacy Policy from time to time. If we make significant changes, we will post a notification in the server. We encourage you to review this policy periodically.</p>
-<ol>
-<li>Contact Us</li>
-</ol>
-<p>If you have questions, concerns, or requests regarding this Privacy Policy or your data, please use the /system issue command to submit a private ticket to the development team, or contact a server Administrator directly.</p>
-    </article>
-    <footer>Xabat</footer>
-  </main>
+
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <header>
+        <h1>Privacy Policy</h1>
+        <p class="subtitle">Xabat</p>
+    </header>
+
+    <div class="container">
+        <p class="meta-text">Last Updated: August 15, 2026</p>
+        
+        <div class="card">
+            <p>Xabat ("Xabat", "we", "us", or "our") is a Discord-based reporting and triage bot designed to help users report grooming, sexual abuse, sextortion, child endangerment, and related incidents.</p>
+            <p>This Privacy Policy explains what information Xabat collects, how it is used, who may access it, and how long it is retained.</p>
+        </div>
+
+        <div class="card">
+            <h2>1. Information We Collect</h2>
+            <p>When you submit a report, Xabat may collect:</p>
+            <ul>
+                <li>Your Discord user ID.</li>
+                <li>Your Discord username or display name when you choose to share your identity with moderators.</li>
+                <li>The reported individual's online name or handle.</li>
+                <li>Ages provided for the reported individual and alleged victim.</li>
+                <li>The country or jurisdiction provided in the report.</li>
+                <li>The details and description you provide about the incident.</li>
+                <li>Images or screenshots you voluntarily submit as evidence.</li>
+                <li>Technical information necessary for operating the reporting system, such as report IDs and timestamps.</li>
+            </ul>
+            <p>If you choose Stay Anonymous, your Discord identity is not displayed to moderators within the report. However, your Discord user ID is still stored internally so that Xabat can associate your report with your account and manage follow-up communication.</p>
+        </div>
+
+        <div class="card">
+            <h2>2. How Evidence Images Are Handled</h2>
+            <p>Xabat is specifically designed to discourage the submission of explicit sexual material or Child Sexual Abuse Material (CSAM).</p>
+            <p>Users are instructed not to upload CSAM or explicit sexual images. Where possible, screenshots should be cropped or redacted so that only relevant conversation text and non-explicit evidence is visible.</p>
+            <p>When an image is submitted:</p>
+            <ol>
+                <li>Xabat downloads the attachment for processing.</li>
+                <li>The image is temporarily stored on the bot server for automated screening.</li>
+                <li>NudeNet performs automated explicit-content screening.</li>
+                <li>If the image is flagged, Xabat rejects the upload and does not forward it to the Xabat moderation team or retain it as case evidence.</li>
+                <li>Temporary processing data is deleted after scanning.</li>
+                <li>If the image is not flagged, it is placed into a pending moderation queue where an authorized moderator can approve or delete it.</li>
+            </ol>
+            <p>The automated scanner is a safety measure and is not guaranteed to identify every form of explicit or illegal material. Users must not rely on the scanner as permission to upload prohibited material.</p>
+        </div>
+
+        <div class="card">
+            <h2>3. Report Storage</h2>
+            <p>Submitted reports are stored in Xabat's database so that authorized moderators can review and manage cases.</p>
+            <p>Reports may contain highly sensitive information, including allegations of sexual abuse, grooming, sextortion, and child endangerment.</p>
+            <p>Access to reports and evidence is restricted to designated administrators and authorized moderators responsible for operating the Xabat reporting system.</p>
+        </div>
+
+        <div class="card">
+            <h2>4. Evidence Retention</h2>
+            <p>Xabat uses limited retention periods designed to avoid keeping sensitive information longer than necessary.</p>
+            <ul>
+                <li><strong>Incomplete evidence-upload sessions</strong> expire after 10 minutes of inactivity or 1 hour after creation, whichever occurs first.</li>
+                <li><strong>Rate-limit information</strong> is automatically deleted after approximately 24 hours.</li>
+                <li><strong>Evidence discussion threads</strong> are automatically deleted after approximately 120 days.</li>
+                <li><strong>Closed reports</strong> are automatically deleted from the Xabat database after approximately 180 days.</li>
+                <li><strong>Pending or active reports</strong> may be retained for as long as reasonably necessary to allow the moderation team to review and resolve the case.</li>
+            </ul>
+            <p>Deletion from Xabat's systems does not necessarily mean that copies held by third-party services, such as Discord, are simultaneously deleted. Third-party services are governed by their own privacy policies and retention practices.</p>
+        </div>
+
+        <div class="card">
+            <h2>5. How Information Is Used</h2>
+            <p>Information submitted to Xabat is used to:</p>
+            <ul>
+                <li>Receive and organize incident reports.</li>
+                <li>Allow authorized moderators to review reports.</li>
+                <li>Communicate with reporters regarding their reports.</li>
+                <li>Process and triage submitted evidence.</li>
+                <li>Prevent abuse of the reporting system.</li>
+                <li>Maintain report status and case-management information.</li>
+                <li>Investigate technical problems and maintain the service.</li>
+                <li>Where appropriate, facilitate reporting or escalation to relevant platforms, organizations, or authorities.</li>
+            </ul>
+            <p>Xabat does not intentionally use submitted reports or evidence for advertising, marketing, or commercial profiling.</p>
+        </div>
+
+        <div class="card">
+            <h2>6. Reporting and Disclosure</h2>
+            <p>Xabat may disclose information from a report when reasonably necessary to address serious safety concerns, comply with applicable law, respond to valid legal requests, or facilitate reporting of suspected criminal activity to an appropriate platform, organization, or authority.</p>
+            <p>Where appropriate, this may include relevant report information or evidence.</p>
+            <p>Xabat does not represent itself as a law-enforcement agency and does not independently determine whether a reported individual is guilty of a crime. Reports are allegations that may require further investigation by appropriate authorities.</p>
+        </div>
+
+        <div class="card">
+            <h2>7. Anonymous Reports</h2>
+            <p>Choosing the anonymous-report option hides the reporter's Discord identity from the moderators viewing the report.</p>
+            <p>However, anonymous reporting does not mean that Xabat has no record connecting the report to the Discord account that submitted it. The Discord user ID is retained internally for report management and communication purposes.</p>
+        </div>
+
+        <div class="card">
+            <h2>8. Security</h2>
+            <p>Xabat uses access controls, restricted Discord channels, moderator permissions, database access restrictions, automated cleanup, and evidence-screening mechanisms to reduce unauthorized access to sensitive reports.</p>
+            <p>However, no online service can guarantee absolute security.</p>
+            <p>Users should avoid submitting unnecessary personal information and should redact information that is not relevant to the report.</p>
+        </div>
+
+        <div class="card">
+            <h2>9. Third-Party Services</h2>
+            <p>Xabat operates through third-party services, including Discord and hosting/infrastructure providers.</p>
+            <p>Information transmitted through these services may be processed according to their respective policies and terms.</p>
+            <p>Xabat does not control the internal storage, processing, or retention practices of third-party providers.</p>
+        </div>
+
+        <div class="card">
+            <h2>10. Children's Privacy</h2>
+            <p>Xabat may receive reports submitted by minors because the service is intended to provide a reporting mechanism for incidents involving abuse and exploitation.</p>
+            <p>We do not intentionally collect unnecessary information about minors. Users should only provide information that is relevant to the incident being reported.</p>
+        </div>
+
+        <div class="card">
+            <h2>11. Changes to This Policy</h2>
+            <p>This Privacy Policy may be updated when Xabat's functionality, data practices, or legal requirements change.</p>
+            <p>The current version will be made available through Xabat's official legal documentation.</p>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <p>Xabat is a reporting and triage tool, not a law-enforcement agency.</p>
+            <p class="emergency">If you or someone else is in immediate danger, contact the appropriate emergency services or a relevant child-protection or law-enforcement authority.</p>
+        </div>
+    </footer>
+
+    <div id="toTop" onclick="scrollTop()"></div>
+
+    <script>
+        const toTopBtn = document.getElementById('toTop');
+        window.onscroll = function() {
+            if (document.body.scrollTop > 400 || document.documentElement.scrollTop > 400) {
+                toTopBtn.classList.add('visible');
+            } else {
+                toTopBtn.classList.remove('visible');
+            }
+        };
+
+        function scrollTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
 </body>
 </html>
