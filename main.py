@@ -49,12 +49,12 @@ def get_env_var(key: str) -> str:
     return val
 
 BOT_TOKEN = get_env_var("BOT_TOKEN")
-SECURE_CHANNEL_ID = int(get_env_var("SECURE_CHANNEL_ID"))       
-MOD_LOG_CHANNEL_ID = int(get_env_var("MOD_LOG_CHANNEL_ID"))    
-MOD_ROLE_ID = int(get_env_var("MOD_ROLE_ID"))                  
-GUILD_ID = int(os.getenv("GUILD_ID", "0"))                     
-ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0"))     
-FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0"))     
+SECURE_CHANNEL_ID = int(get_env_var("SECURE_CHANNEL_ID").strip())       
+MOD_LOG_CHANNEL_ID = int(get_env_var("MOD_LOG_CHANNEL_ID").strip())    
+MOD_ROLE_ID = int(get_env_var("MOD_ROLE_ID").strip())                  
+GUILD_ID = int(os.getenv("GUILD_ID", "0").strip())                     
+ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0").strip())     
+FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0").strip())     
 
 UPLOAD_SESSION_TIMEOUT = 600        
 UPLOAD_SESSION_HARD_LIMIT = 3600   
@@ -858,7 +858,7 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
             log.error(f"Failed to send to secure channel for {report_id}: {e}")
             async with aiosqlite.connect("reports.db") as db:
                 await db.execute("DELETE FROM reports WHERE report_id=?", (report_id,))
-                await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
+                await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                 await db.commit()
             return await interaction.followup.send("We ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
 
@@ -1019,8 +1019,19 @@ class SystemGroup(app_commands.Group):
     async def issue(self, interaction: discord.Interaction, title: str, description: str):
         await interaction.response.defer(ephemeral=True)
         
+        global issue_channel_cache
+        if not issue_channel_cache and ISSUE_CHANNEL_ID != 0:
+            try:
+                issue_channel_cache = bot.get_channel(ISSUE_CHANNEL_ID) or await bot.fetch_channel(ISSUE_CHANNEL_ID)
+            except discord.Forbidden:
+                log.error("Bot lacks permissions to view ISSUE_CHANNEL_ID.")
+            except discord.NotFound:
+                log.error("ISSUE_CHANNEL_ID does not exist.")
+            except Exception as e:
+                log.error(f"Failed to fetch ISSUE_CHANNEL_ID: {e}")
+        
         if not issue_channel_cache:
-            return await interaction.followup.send("I couldn't find the issue reporting channel. Please contact an admin.", ephemeral=True)
+            return await interaction.followup.send("I couldn't find the issue reporting channel. Please ensure the bot has the 'View Channel' permission for it.", ephemeral=True)
         
         safe_title = title[:90]
         
@@ -1219,7 +1230,7 @@ async def on_message(message: discord.Message):
             
             if case_status in ["Resolved", "False Report"]:
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
                     await db.commit()
                 await message.channel.send("This case has been closed by the moderation team. You can no longer upload evidence for it. If you need to submit a new report, please use `/report`.")
                 return
@@ -1233,7 +1244,7 @@ async def on_message(message: discord.Message):
             
             if message.content.lower().strip() in ['done', 'cancel', 'stop']:
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
                     await db.commit()
                 await message.channel.send("Thank you for providing this information. Your evidence has been passed securely to our team. If we need anything else, we will reach out to you here. Please take care.")
                 return
@@ -1378,6 +1389,10 @@ async def on_ready():
             issue_channel_cache = bot.get_channel(ISSUE_CHANNEL_ID) or await bot.fetch_channel(ISSUE_CHANNEL_ID)
         except discord.NotFound:
             log.error("ERROR: ISSUE_CHANNEL_ID not found!")
+        except discord.Forbidden:
+            log.error("ERROR: Bot lacks permissions to view ISSUE_CHANNEL_ID. Check channel permissions.")
+        except Exception as e:
+            log.error(f"ERROR: Failed to cache ISSUE_CHANNEL_ID: {e}")
             
     if FORUM_CHANNEL_ID != 0:
         try:
