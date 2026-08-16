@@ -1,8 +1,13 @@
+# ==============================================================================
+# Xabat - Predator Reporting & Triage Bot
+# Copyright (C) 2026 skywalker14017
+#
+# Licensed under the Xabat Ethical Source License (XESL) v1.1.
+# ==============================================================================
+
 import discord
 from discord.ext import commands, tasks
 import os
-import threading
-from flask import Flask
 import re
 import time
 import aiosqlite
@@ -10,23 +15,33 @@ import secrets
 import asyncio
 import io
 import tempfile
+import logging
+import threading
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from discord import app_commands
+from flask import Flask
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+log = logging.getLogger("xabat")
+
 load_dotenv()
 
-# --- NUDENET AI IMPORT ---
 try:
     from nudenet import NudeDetector
     nude_detector = NudeDetector()
+    log.info("NudeNet AI loaded successfully.")
 except ImportError:
-    print("WARNING: NudeNet is not installed! Please run 'pip install nudenet'")
+    log.warning("NudeNet is not installed! Please run 'pip install nudenet'")
     nude_detector = None
 except Exception as e:
-    print(f"Failed to initialize NudeNet: {e}")
+    log.warning(f"Failed to initialize NudeNet: {e}")
     nude_detector = None
 
-# --- CONFIGURATION ---
 def get_env_var(key: str) -> str:
     val = os.getenv(key)
     if not val:
@@ -34,62 +49,268 @@ def get_env_var(key: str) -> str:
     return val
 
 BOT_TOKEN = get_env_var("BOT_TOKEN")
-SECURE_CHANNEL_ID = int(get_env_var("SECURE_CHANNEL_ID")) 
-MOD_LOG_CHANNEL_ID = int(get_env_var("MOD_LOG_CHANNEL_ID"))
-MOD_ROLE_ID = int(get_env_var("MOD_ROLE_ID"))
-GUILD_ID = int(os.getenv("GUILD_ID", "0")) 
-ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0"))
-FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0"))
+SECURE_CHANNEL_ID = int(get_env_var("SECURE_CHANNEL_ID"))       
+MOD_LOG_CHANNEL_ID = int(get_env_var("MOD_LOG_CHANNEL_ID"))    
+MOD_ROLE_ID = int(get_env_var("MOD_ROLE_ID"))                  
+GUILD_ID = int(os.getenv("GUILD_ID", "0"))                     
+ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0"))     
+FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0"))     
 
-# Web-Verified Global Age of Consent Dictionary
-CONSENT_LAWS = {
-    "afghanistan": 18, "af": 18, "albania": 14, "al": 14, "algeria": 16, "dz": 16, "andorra": 16, "ad": 16,
-    "angola": 12, "ao": 12, "antiguaandbarbuda": 16, "antigua": 16, "ag": 16, "argentina": 13, "ar": 13,
-    "armenia": 16, "am": 16, "australia": 16, "aus": 16, "oz": 16, "au": 16, "austria": 14, "at": 14,
-    "azerbaijan": 16, "az": 16, "bahamas": 16, "bs": 16, "bahrain": 16, "bh": 16, "bangladesh": 18, "bd": 18,
-    "barbados": 16, "bb": 16, "belarus": 16, "by": 16, "belgium": 16, "be": 16, "belize": 16, "bz": 16,
-    "benin": 16, "bj": 16, "bhutan": 18, "bt": 18, "bolivia": 14, "bo": 14, "bosniaandherzegovina": 14, "bosnia": 14, "bih": 14,
-    "botswana": 16, "bw": 16, "brazil": 14, "brasil": 14, "br": 14, "brunei": 16, "bn": 16, "bulgaria": 14, "bg": 14,
-    "burkinafaso": 15, "bf": 15, "burundi": 18, "bi": 18, "caboverde": 14, "capeverde": 14, "cv": 14, "cambodia": 15, "kh": 15,
-    "cameroon": 16, "cm": 16, "canada": 16, "ca": 16, "centralafricanrepublic": 18, "car": 18, "cf": 18, "chad": 15, "td": 15,
-    "chile": 14, "cl": 14, "china": 14, "prc": 14, "peoplerepublicofchina": 14, "cn": 14, "colombia": 14, "co": 14, "comoros": 13, "km": 13,
-    "congo": 18, "drcongo": 18, "republicofthecongo": 18, "cg": 18, "drc": 18, "costarica": 15, "cr": 15, "cotedivoire": 15, "ivorycoast": 15, "ci": 15,
-    "croatia": 15, "hr": 15, "cuba": 16, "cu": 16, "cyprus": 17, "cy": 17, "czechia": 15, "czechrepublic": 15, "cz": 15, "denmark": 15, "dk": 15,
-    "djibouti": 18, "dj": 18, "dominica": 16, "dm": 16, "dominicanrepublic": 18, "dr": 18, "do": 18, "ecuador": 14, "ec": 14, "egypt": 18, "eg": 18,
-    "elsalvador": 18, "sv": 18, "equatorialguinea": 18, "gq": 18, "eritrea": 18, "er": 18, "estonia": 14, "ee": 14, "eswatini": 16, "swaziland": 16, "sz": 16,
-    "ethiopia": 18, "et": 18, "fiji": 16, "fj": 16, "finland": 16, "fi": 16, "france": 15, "fr": 15, "gabon": 18, "ga": 18, "gambia": 18, "gm": 18,
-    "georgia": 16, "ge": 16, "germany": 14, "de": 14, "ghana": 16, "gh": 16, "greece": 15, "gr": 15, "grenada": 16, "gd": 16, "guatemala": 18, "gt": 18,
-    "guinea": 15, "gn": 15, "guineabissau": 18, "gw": 18, "guyana": 16, "gy": 16, "haiti": 18, "ht": 18, "honduras": 15, "hn": 15, "hongkong": 16, "hk": 16,
-    "hungary": 14, "hu": 14, "iceland": 15, "is": 15, "india": 18, "in": 18, "indonesia": 18, "id": 18, "iran": 13, "ir": 13, "iraq": 18, "iq": 18,
-    "ireland": 17, "ie": 17, "israel": 16, "il": 16, "italy": 14, "it": 14, "jamaica": 16, "jm": 16, "japan": 16, "jp": 16, "jordan": 18, "jo": 18,
-    "kazakhstan": 16, "kz": 16, "kenya": 18, "ke": 18, "kiribati": 16, "ki": 16, "kuwait": 18, "kw": 18, "kyrgyzstan": 16, "kg": 16, "laos": 15, "la": 15,
-    "latvia": 16, "lv": 16, "lebanon": 18, "lb": 18, "lesotho": 16, "ls": 16, "liberia": 16, "lr": 16, "libya": 18, "ly": 18, "liechtenstein": 14, "li": 14,
-    "lithuania": 16, "lt": 16, "luxembourg": 16, "lu": 16, "macau": 16, "mo": 16, "madagascar": 14, "mg": 14, "malawi": 16, "mw": 16, "malaysia": 16, "my": 16,
-    "maldives": 18, "mv": 18, "mali": 18, "ml": 18, "malta": 18, "mt": 18, "marshallislands": 16, "mh": 16, "mauritania": 18, "mr": 18, "mauritius": 16, "mu": 16,
-    "mexico": 18, "mx": 18, "micronesia": 16, "fm": 16, "moldova": 16, "md": 16, "monaco": 15, "mc": 15, "mongolia": 16, "mn": 16, "montenegro": 14, "me": 14,
-    "morocco": 18, "ma": 18, "mozambique": 16, "mz": 16, "myanmar": 18, "burma": 18, "mm": 18, "namibia": 16, "na": 16, "nauru": 16, "nr": 16, "nepal": 18, "np": 18,
-    "netherlands": 16, "nl": 16, "newzealand": 16, "nz": 16, "nicaragua": 18, "ni": 18, "niger": 13, "ne": 13, "nigeria": 11, "ng": 11, "northkorea": 15, "dprk": 15, "kp": 15,
-    "northmacedonia": 14, "macedonia": 14, "mk": 14, "norway": 16, "no": 16, "oman": 18, "om": 18, "pakistan": 18, "pk": 18, "palau": 16, "pw": 16, "palestine": 16, "stateofpalestine": 16, "ps": 16,
-    "panama": 18, "pa": 18, "papuanewguinea": 16, "pg": 16, "paraguay": 14, "py": 14, "peru": 14, "pe": 14, "philippines": 16, "ph": 16, "poland": 15, "pl": 15, "portugal": 14, "pt": 14,
-    "qatar": 18, "qa": 18, "romania": 16, "ro": 16, "russia": 16, "russianfederation": 16, "ru": 16, "rwanda": 18, "rw": 18, "saintkittsandnevis": 16, "saintkitts": 16, "kn": 16,
-    "saintlucia": 16, "lc": 16, "saintvincentandthegrenadines": 16, "saintvincent": 16, "vc": 16, "samoa": 16, "ws": 16, "sanmarino": 14, "sm": 14, "saotomeandprincipe": 16, "saotome": 16, "st": 16,
-    "saudiarabia": 18, "saudi": 18, "ksa": 18, "sa": 18, "senegal": 16, "sn": 16, "serbia": 14, "rs": 14, "seychelles": 15, "sc": 15, "sierraleone": 18, "sl": 18, "singapore": 16, "sg": 16,
-    "slovakia": 15, "sk": 15, "slovenia": 15, "si": 15, "solomonislands": 16, "sb": 16, "somalia": 18, "so": 18, "southafrica": 16, "za": 16, "southkorea": 16, "korea": 16, "republicofkorea": 16, "kr": 16,
-    "southsudan": 18, "ss": 18, "spain": 16, "es": 16, "srilanka": 16, "sri": 16, "lk": 16, "sudan": 18, "sd": 18, "suriname": 16, "sr": 16, "sweden": 15, "se": 15, "switzerland": 16, "ch": 16,
-    "syria": 15, "sy": 15, "taiwan": 16, "tw": 16, "tajikistan": 16, "tj": 16, "tanzania": 18, "tz": 18, "thailand": 15, "th": 15, "timorleste": 14, "easttimor": 14, "tl": 14, "togo": 16, "tg": 16,
-    "tonga": 16, "to": 16, "trinidadandtobago": 18, "trinidad": 18, "tt": 18, "tunisia": 18, "tn": 18, "turkey": 18, "tr": 18, "turkiye": 18, "turkmenistan": 16, "tm": 16, "tuvalu": 16, "tv": 16,
-    "uganda": 18, "ug": 18, "ukraine": 16, "ua": 16, "uae": 18, "unitedarabemirates": 18, "ae": 18, "uk": 16, "unitedkingdom": 16, "britain": 16, "england": 16, "scotland": 16, "wales": 16, "greatbritain": 16, "gb": 16,
-    "usa": 18, "us": 18, "unitedstates": 18, "unitedstatesofamerica": 18, "america": 18, "uruguay": 15, "uy": 15, "uzbekistan": 16, "uz": 16, "vanuatu": 16, "vu": 16, "vaticancity": 18, "vatican": 18, "va": 18,
-    "venezuela": 16, "ve": 16, "vietnam": 18, "vn": 18, "yemen": 18, "ye": 18, "zambia": 16, "zm": 16, "zimbabwe": 16, "zw": 16
-}
+UPLOAD_SESSION_TIMEOUT = 600        
+UPLOAD_SESSION_HARD_LIMIT = 3600   
+EVIDENCE_RETENTION_DAYS = 120      
+CLOSED_CASE_RETENTION_DAYS = 180   
+AUDIT_LOG_RETENTION_DAYS = 365     
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-MAX_EVIDENCE = 25
+MAX_FILE_SIZE = 10 * 1024 * 1024  
+MAX_EVIDENCE = 25                 
 
-# --- BOT SETUP ---
+# CONSENT_LAWS Reference Data
+# This dictionary is reference data used to surface potential age-related 
+# concerns for moderator review. It is NOT a complete legal database, does 
+# NOT constitute legal advice, and does NOT independently determine whether 
+# conduct is legal or illegal. Moderators must treat the resulting flag as a 
+# review signal, not a definitive legal conclusion.
+
+def _gn(age, notes=""):
+    """Helper for gender-neutral jurisdictions."""
+    return {"male": age, "female": age, "jurisdiction_specific": False, "notes": notes}
+
+# Pre-defined objects for sex-specific or jurisdiction-specific countries
+_china = {"male": None, "female": 14, "jurisdiction_specific": False, "notes": "Statutory provision specifically concerns intercourse involving a girl below 14."}
+_srilanka = {"male": None, "female": 16, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific and the legal framework concerning boys is different."}
+_malaysia = {"male": None, "female": 16, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific and applies to girls."}
+_benin = {"male": None, "female": 18, "jurisdiction_specific": False, "notes": "No corresponding single numeric statutory threshold encoded for boys."}
+_tuvalu = {"male": None, "female": 15, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific."}
+_solomonislands = {"male": None, "female": 15, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific."}
+_saintvincent = {"male": None, "female": 15, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific."}
+_tanzania = {"male": None, "female": 18, "jurisdiction_specific": True, "notes": "Mainland Tanzania differs from Zanzibar; Zanzibar is 18 for both."}
+_jordan = {"male": None, "female": 18, "jurisdiction_specific": False, "notes": "Relevant sexual-offense provisions treat boys and girls differently; male side is not represented by an equivalent single numeric threshold."}
+_kuwait = {"male": None, "female": 21, "jurisdiction_specific": False, "notes": "Relevant provisions distinguish treatment of girls and boys; do not interpret 21 as a universal male/female consent age."}
+_guineabissau = {"male": 12, "female": 16, "jurisdiction_specific": False, "notes": "Genuine numeric male/female difference."}
+
+_usa = {"male": None, "female": None, "jurisdiction_specific": True, "notes": "Varies by state."}
+_australia = {"male": None, "female": None, "jurisdiction_specific": True, "notes": "Varies by state/territory."}
+_mexico = {"male": None, "female": None, "jurisdiction_specific": True, "notes": "Varies by state."}
+_none_multi = {"male": None, "female": None, "jurisdiction_specific": False, "notes": "Multiple statutory thresholds exist; no single numeric value assigned."}
+
+CONSENT_LAWS = {
+    "afghanistan": _gn(18), "af": _gn(18),
+    "albania": _gn(18), "al": _gn(18),
+    "algeria": _gn(16), "dz": _gn(16),
+    "andorra": _gn(18), "ad": _gn(18),
+    "angola": _gn(14), "ao": _gn(14),
+    "antiguaandbarbuda": _gn(16), "antigua": _gn(16), "ag": _gn(16),
+    "argentina": _gn(13), "ar": _gn(13),
+    "armenia": _gn(16), "am": _gn(16),
+    "australia": _australia, "aus": _australia, "oz": _australia, "au": _australia,
+    "austria": _gn(18), "at": _gn(18),
+    "azerbaijan": _gn(16), "az": _gn(16),
+    "bahamas": _gn(18), "bs": _gn(18),
+    "bahrain": _gn(21), "bh": _gn(21),
+    "bangladesh": _gn(14), "bd": _gn(14),
+    "barbados": _gn(16), "bb": _gn(16),
+    "belarus": _gn(16), "by": _gn(16),
+    "belgium": _gn(18), "be": _gn(18),
+    "belize": _gn(16), "bz": _gn(16),
+    "benin": _benin, "bj": _benin,
+    "bhutan": _gn(18), "bt": _gn(18),
+    "bolivia": _gn(18), "bo": _gn(18),
+    "bosniaandherzegovina": _gn(18), "bosnia": _gn(18), "bih": _gn(18),
+    "botswana": _gn(18), "bw": _gn(18),
+    "brazil": _gn(14), "brasil": _gn(14), "br": _gn(14),
+    "brunei": _gn(16), "bn": _gn(16),
+    "bulgaria": _gn(14), "bg": _gn(14),
+    "burkinafaso": _gn(18), "bf": _gn(18),
+    "burundi": _gn(18), "bi": _gn(18),
+    "caboverde": _gn(16), "capeverde": _gn(16), "cv": _gn(16),
+    "cambodia": _gn(15), "kh": _gn(15),
+    "cameroon": _gn(21), "cm": _gn(21),
+    "canada": _gn(18), "ca": _gn(18),
+    "centralafricanrepublic": _gn(18), "car": _gn(18), "cf": _gn(18),
+    "chad": _gn(16), "td": _gn(16),
+    "chile": _gn(18), "cl": _gn(18),
+    "china": _china, "prc": _china, "peoplerepublicofchina": _china, "cn": _china,
+    "colombia": _gn(14), "co": _gn(14),
+    "comoros": _gn(15), "km": _gn(15),
+    "congo": _gn(18), "republicofthecongo": _gn(18), "cg": _gn(18),
+    "costarica": _gn(18), "cr": _gn(18),
+    "croatia": _gn(15), "hr": _gn(15),
+    "cuba": _gn(16), "cu": _gn(16),
+    "cyprus": _gn(17), "cy": _gn(17),
+    "czechia": _gn(15), "czechrepublic": _gn(15), "cz": _gn(15),
+    "denmark": _gn(15), "dk": _gn(15),
+    "djibouti": _gn(18), "dj": _gn(18),
+    "dominica": _gn(16), "dm": _gn(16),
+    "dominicanrepublic": _gn(18), "dr": _gn(18), "do": _gn(18),
+    "ecuador": _gn(14), "ec": _gn(14),
+    "egypt": _gn(18), "eg": _gn(18),
+    "elsalvador": _gn(15), "sv": _gn(15),
+    "equatorialguinea": _gn(18), "gq": _gn(18),
+    "eritrea": _gn(18), "er": _gn(18),
+    "estonia": _gn(18), "ee": _gn(18),
+    "eswatini": _gn(18), "swaziland": _gn(18), "sz": _gn(18),
+    "ethiopia": _gn(18), "et": _gn(18),
+    "fiji": _gn(16), "fj": _gn(16),
+    "finland": _gn(18), "fi": _gn(18),
+    "france": _gn(15), "fr": _gn(15),
+    "gabon": _gn(21), "ga": _gn(21),
+    "gambia": _gn(18), "gm": _gn(18),
+    "georgia": _gn(16), "ge": _gn(16),
+    "germany": _gn(18), "de": _gn(18),
+    "ghana": _gn(16), "gh": _gn(16),
+    "greece": _gn(18), "gr": _gn(18),
+    "grenada": _gn(16), "gd": _gn(16),
+    "guatemala": _gn(18), "gt": _gn(18),
+    "guinea": _gn(15), "gn": _gn(15),
+    "guineabissau": _guineabissau, "gw": _guineabissau,
+    "guyana": _gn(16), "gy": _gn(16),
+    "haiti": _gn(15), "ht": _gn(15),
+    "honduras": _gn(18), "hn": _gn(18),
+    "hongkong": _gn(21), "hk": _gn(21),
+    "hungary": _gn(18), "hu": _gn(18),
+    "iceland": _gn(18), "is": _gn(18),
+    "india": _gn(18), "in": _gn(18),
+    "indonesia": _gn(18), "id": _gn(18),
+    "iran": _gn(18), "ir": _gn(18),
+    "iraq": _gn(18), "iq": _gn(18),
+    "ireland": _gn(17), "ie": _gn(17),
+    "israel": _gn(16), "il": _gn(16),
+    "italy": _gn(16), "it": _gn(16),
+    "jamaica": _gn(16), "jm": _gn(16),
+    "japan": _gn(18), "jp": _gn(18),
+    "jordan": _jordan, "jo": _jordan,
+    "kazakhstan": _gn(16), "kz": _gn(16),
+    "kenya": _gn(18), "ke": _gn(18),
+    "kiribati": _gn(15), "ki": _gn(15),
+    "kuwait": _kuwait, "kw": _kuwait,
+    "kyrgyzstan": _gn(16), "kg": _gn(16),
+    "laos": _gn(15), "la": _gn(15),
+    "latvia": _gn(16), "lv": _gn(16),
+    "lebanon": _gn(18), "lb": _gn(18),
+    "lesotho": _gn(18), "ls": _gn(18),
+    "liberia": _gn(18), "lr": _gn(18),
+    "libya": _gn(18), "ly": _gn(18),
+    "liechtenstein": _gn(18), "li": _gn(18),
+    "lithuania": _gn(18), "lt": _gn(18),
+    "luxembourg": _gn(16), "lu": _gn(16),
+    "macau": _gn(14), "mo": _gn(14),
+    "madagascar": _none_multi, "mg": _none_multi,
+    "malawi": _gn(16), "mw": _gn(16),
+    "malaysia": _malaysia, "my": _malaysia,
+    "maldives": _gn(18), "mv": _gn(18),
+    "mali": _gn(15), "ml": _gn(15),
+    "malta": _gn(16), "mt": _gn(16),
+    "marshallislands": _gn(16), "mh": _gn(16),
+    "mauritania": _gn(18), "mr": _gn(18),
+    "mauritius": _gn(16), "mu": _gn(16),
+    "mexico": _mexico, "mx": _mexico,
+    "micronesia": _gn(16), "fm": _gn(16),
+    "moldova": _gn(16), "md": _gn(16),
+    "monaco": _gn(15), "mc": _gn(15),
+    "mongolia": _gn(16), "mn": _gn(16),
+    "montenegro": _gn(18), "me": _gn(18),
+    "morocco": _gn(18), "ma": _gn(18),
+    "mozambique": _gn(18), "mz": _gn(18),
+    "myanmar": _gn(16), "burma": _gn(16), "mm": _gn(16),
+    "namibia": _gn(16), "na": _gn(16),
+    "nauru": _gn(17), "nr": _gn(17),
+    "nepal": _gn(18), "np": _gn(18),
+    "netherlands": _gn(18), "nl": _gn(18),
+    "newzealand": _gn(16), "nz": _gn(16),
+    "nicaragua": _gn(18), "ni": _gn(18),
+    "niger": _none_multi, "ne": _none_multi,
+    "nigeria": _gn(18), "ng": _gn(18),
+    "northkorea": _gn(15), "dprk": _gn(15), "kp": _gn(15),
+    "northmacedonia": _gn(18), "macedonia": _gn(18), "mk": _gn(18),
+    "norway": _gn(16), "no": _gn(16),
+    "oman": _gn(18), "om": _gn(18),
+    "pakistan": _gn(18), "pk": _gn(18),
+    "palau": _gn(16), "pw": _gn(16),
+    "palestine": _gn(18), "stateofpalestine": _gn(18), "ps": _gn(18),
+    "panama": _gn(18), "pa": _gn(18),
+    "papuanewguinea": _none_multi, "pg": _none_multi,
+    "paraguay": _gn(16), "py": _gn(16),
+    "peru": _gn(18), "pe": _gn(18),
+    "philippines": _gn(18), "ph": _gn(18),
+    "poland": _gn(18), "pl": _gn(18),
+    "portugal": _gn(14), "pt": _gn(14),
+    "qatar": _gn(18), "qa": _gn(18),
+    "romania": _gn(18), "ro": _gn(18),
+    "russia": _gn(16), "russianfederation": _gn(16), "ru": _gn(16),
+    "rwanda": _gn(18), "rw": _gn(18),
+    "saintkittsandnevis": _gn(16), "saintkitts": _gn(16), "kn": _gn(16),
+    "saintlucia": _gn(16), "lc": _gn(16),
+    "saintvincentandthegrenadines": _saintvincent, "saintvincent": _saintvincent, "vc": _saintvincent,
+    "samoa": _gn(16), "ws": _gn(16),
+    "sanmarino": _gn(18), "sm": _gn(18),
+    "saotomeandprincipe": _gn(16), "saotome": _gn(16), "st": _gn(16),
+    "saudiarabia": _gn(18), "saudi": _gn(18), "ksa": _gn(18), "sa": _gn(18),
+    "senegal": _gn(16), "sn": _gn(16),
+    "serbia": _gn(18), "rs": _gn(18),
+    "seychelles": _gn(15), "sc": _gn(15),
+    "sierraleone": _gn(18), "sl": _gn(18),
+    "singapore": _gn(18), "sg": _gn(18),
+    "slovakia": _gn(15), "sk": _gn(15),
+    "slovenia": _gn(15), "si": _gn(15),
+    "solomonislands": _solomonislands, "sb": _solomonislands,
+    "somalia": _gn(18), "so": _gn(18),
+    "southafrica": _gn(16), "za": _gn(16),
+    "southkorea": _gn(16), "korea": _gn(16), "republicofkorea": _gn(16), "kr": _gn(16),
+    "southsudan": _gn(18), "ss": _gn(18),
+    "spain": _gn(18), "es": _gn(18),
+    "srilanka": _srilanka, "sri": _srilanka, "lk": _srilanka,
+    "sudan": _gn(13), "sd": _gn(13),
+    "suriname": _gn(16), "sr": _gn(16),
+    "sweden": _gn(18), "se": _gn(18),
+    "switzerland": _gn(16), "ch": _gn(16),
+    "syria": _gn(15), "sy": _gn(15),
+    "taiwan": _gn(16), "tw": _gn(16),
+    "tajikistan": _gn(16), "tj": _gn(16),
+    "tanzania": _tanzania, "tz": _tanzania,
+    "thailand": _gn(15), "th": _gn(15),
+    "timorleste": _gn(14), "easttimor": _gn(14), "tl": _gn(14),
+    "togo": _gn(15), "tg": _gn(15),
+    "tonga": _gn(16), "to": _gn(16),
+    "trinidadandtobago": _gn(18), "trinidad": _gn(18), "tt": _gn(18),
+    "tunisia": _gn(18), "tn": _gn(18),
+    "turkey": _gn(18), "turkiye": _gn(18), "tr": _gn(18),
+    "turkmenistan": _gn(16), "tm": _gn(16),
+    "tuvalu": _tuvalu, "tv": _tuvalu,
+    "uganda": _gn(18), "ug": _gn(18),
+    "ukraine": _gn(16), "ua": _gn(16),
+    "uae": _gn(18), "unitedarabemirates": _gn(18), "ae": _gn(18),
+    "uk": _gn(18), "unitedkingdom": _gn(18), "britain": _gn(18),
+    "england": _gn(18), "scotland": _gn(18), "wales": _gn(18),
+    "greatbritain": _gn(18), "gb": _gn(18),
+    "usa": _usa, "us": _usa, "unitedstates": _usa,
+    "unitedstatesofamerica": _usa, "america": _usa,
+    "uruguay": _gn(18), "uy": _gn(18),
+    "uzbekistan": _gn(16), "uz": _gn(16),
+    "vanuatu": _gn(18), "vu": _gn(18),
+    "vaticancity": _gn(18), "vatican": _gn(18), "va": _gn(18),
+    "venezuela": _gn(16), "ve": _gn(16),
+    "vietnam": _gn(16), "vn": _gn(16),
+    "yemen": _gn(9), "ye": _gn(9),
+    "zambia": _gn(16), "zm": _gn(16),
+    "zimbabwe": _gn(16), "zw": _gn(16)
+}
+
+CRISIS_RESOURCES = [
+    {"name": "Immediate Crisis Support (US/Canada)", "value": "**Crisis Text Line:** Text HOME to `741741`\n**Childhelp National Child Abuse:** Call/Text `1-800-422-4453`\n**988 Suicide & Crisis Lifeline:** Call or Text `988`"},
+    {"name": "Sexual Abuse & Exploitation (US)", "value": "**RAINN (Rape/Abuse/Incest):** `1-800-656-HOPE` | [rainn.org](https://www.rainn.org)\n**NCMEC CyberTipline:** [report.cybertipline.org](https://report.cybertipline.org)"},
+    {"name": "United Kingdom", "value": "**Childline:** `0800 1111` | [childline.org.uk](https://www.childline.org.uk)\n**NSPCC:** `0808 800 5000` | [nspcc.org.uk](https://www.nspcc.org.uk)\n**Rape Crisis:** `0808 802 9999` | [rapecrisis.org.uk](https://rapecrisis.org.uk)"},
+    {"name": "Canada", "value": "**Kids Help Phone:** `1-800-668-6868` | [kidshelpphone.ca](https://kidshelpphone.ca)\n**Canadian Centre for Child Protection:** [protectchildren.ca](https://www.protectchildren.ca)"},
+    {"name": "Australia", "value": "**Kids Helpline:** `1800 55 1800` | [kidshelpline.com.au](https://www.kidshelpline.com.au)\n**Bravehearts:** `1800 272 831` | [bravehearts.org.au](https://bravehearts.org.au)"},
+    {"name": "India", "value": "**Childline India:** `1098` | [childlineindia.org.in](https://www.childlineindia.org.in)\n**Vandrevala Foundation:** `9999 666 555`"},
+    {"name": "International Support", "value": "**Befrienders Worldwide:** [befrienders.org](https://www.befrienders.org)\n**Find A Helpline:** [findahelpline.com](https://findahelpline.com)\n**International Association for Suicide Prevention:** [iasp.info](https://www.iasp.info)"},
+    {"name": "Removing Explicit Images", "value": "**Take It Down (NCMEC - Under 18):** [takendown.org](https://takendown.org)\n**StopNCII (Adults 18+):** [stopncii.org](https://stopncii.org)"},
+    {"name": "Sextortion / Online Blackmail", "value": "**FBI Internet Crime Complaint Center:** [ic3.gov](https://www.ic3.gov)\n**Stop Sextortion (NCMEC):** [stopsextortion.com](https://www.stopsextortion.com)"}
+]
+
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 secure_channel_cache = None
@@ -98,9 +319,9 @@ issue_channel_cache = None
 forum_channel_cache = None
 commands_synced = False
 
-# --- DATABASE SETUP ---
 async def init_db():
     async with aiosqlite.connect("reports.db") as db:
+        await db.execute("PRAGMA foreign_keys = ON")
         await db.execute("""CREATE TABLE IF NOT EXISTS pending_uploads (
                             user_id INTEGER, report_id TEXT PRIMARY KEY, thread_id INTEGER, 
                             msg_id INTEGER, last_activity REAL, created_timestamp REAL)""")
@@ -108,44 +329,57 @@ async def init_db():
                             user_id INTEGER PRIMARY KEY, last_report REAL)""")
         await db.execute("""CREATE TABLE IF NOT EXISTS reports (
                             report_id TEXT PRIMARY KEY, status TEXT DEFAULT 'Pending', 
-                            created TEXT, closed TEXT, assigned_mod INTEGER, evidence_count INTEGER DEFAULT 0)""")
+                            created TEXT, closed TEXT, assigned_mod INTEGER, evidence_count INTEGER DEFAULT 0,
+                            report_type TEXT, reporter_id INTEGER, msg_id INTEGER, is_anonymous INTEGER DEFAULT 0,
+                            reported_handle TEXT, thread_id INTEGER, thread_created_timestamp REAL,
+                            forum_thread_id INTEGER)""")
         await db.execute("""CREATE TABLE IF NOT EXISTS dm_replies (
                             message_id INTEGER PRIMARY KEY, report_id TEXT, user_id INTEGER)""")
         
-        try: await db.execute("ALTER TABLE reports ADD COLUMN report_type TEXT")
-        except aiosqlite.OperationalError: pass 
-        try: await db.execute("ALTER TABLE reports ADD COLUMN reporter_id INTEGER")
-        except aiosqlite.OperationalError: pass 
-        try: await db.execute("ALTER TABLE reports ADD COLUMN msg_id INTEGER")
-        except aiosqlite.OperationalError: pass 
-        try: await db.execute("ALTER TABLE reports ADD COLUMN is_anonymous INTEGER DEFAULT 0")
-        except aiosqlite.OperationalError: pass
-        try: await db.execute("ALTER TABLE reports ADD COLUMN pedo_name TEXT")
-        except aiosqlite.OperationalError: pass
-        try: await db.execute("ALTER TABLE reports ADD COLUMN thread_id INTEGER")
-        except aiosqlite.OperationalError: pass
-        try: await db.execute("ALTER TABLE reports ADD COLUMN thread_created_timestamp REAL")
-        except aiosqlite.OperationalError: pass
-        try: await db.execute("ALTER TABLE reports ADD COLUMN forum_thread_id INTEGER")
-        except aiosqlite.OperationalError: pass
+        await db.execute("""CREATE TABLE IF NOT EXISTS evidence (
+                            evidence_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            report_id TEXT NOT NULL,
+                            discord_message_id INTEGER,
+                            uploader_id INTEGER,
+                            filename TEXT,
+                            status TEXT DEFAULT 'approved',
+                            created_at TEXT,
+                            FOREIGN KEY (report_id) REFERENCES reports(report_id))""")
 
+        await db.execute("""CREATE TABLE IF NOT EXISTS audit_log (
+                            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            report_id TEXT,
+                            actor_id INTEGER,
+                            action TEXT,
+                            timestamp TEXT)""")
+
+        try: await db.execute("ALTER TABLE reports ADD COLUMN victim_sex TEXT")
+        except aiosqlite.OperationalError: pass
+        try: await db.execute("ALTER TABLE reports ADD COLUMN forum_msg_id INTEGER")
+        except aiosqlite.OperationalError: pass
+            
         await db.execute("CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_pending_user ON pending_uploads(user_id)")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_pending_report ON pending_uploads(report_id)")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_evidence_report ON evidence(report_id)")
             
         await db.commit()
 
-# --- HELPER: PERMISSION CHECK ---
+async def log_audit_action(report_id: str, actor_id: int, action: str):
+    async with aiosqlite.connect("reports.db") as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute("INSERT INTO audit_log (report_id, actor_id, action, timestamp) VALUES (?, ?, ?, ?)",
+                         (report_id, actor_id, action, datetime.now(timezone.utc).isoformat()))
+        await db.commit()
+
 def is_moderator(interaction: discord.Interaction):
     if isinstance(interaction.user, discord.User): return False
     if interaction.user.guild_permissions.administrator: return True
     if MOD_ROLE_ID in [r.id for r in interaction.user.roles]: return True
     return False
 
-# --- HELPER: NUDENET EXPLICIT SCAN ---
 async def is_explicit_image(image_bytes: bytes) -> bool:
     if not nude_detector:
-        return True # Fail closed. If AI didn't load, block the image.
+        return True 
     
     temp_path = None
     try:
@@ -153,14 +387,15 @@ async def is_explicit_image(image_bytes: bytes) -> bool:
             temp.write(image_bytes)
             temp_path = temp.name
             
-        detections = await asyncio.to_thread(nude_detector.detect, temp_path)
+        try:
+            detections = await asyncio.wait_for(asyncio.to_thread(nude_detector.detect, temp_path), timeout=30.0)
+        except asyncio.TimeoutError:
+            log.error(f"NudeNet scan timed out on temp file {temp_path}")
+            return True 
         
         explicit_labels = {
-            "FEMALE_BREAST_EXPOSED",
-            "FEMALE_GENITALIA_EXPOSED",
-            "MALE_GENITALIA_EXPOSED",
-            "BUTTOCKS_EXPOSED",
-            "ANUS_EXPOSED"
+            "FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED",
+            "MALE_GENITALIA_EXPOSED", "BUTTOCKS_EXPOSED", "ANUS_EXPOSED"
         }
         
         for det in detections:
@@ -169,66 +404,83 @@ async def is_explicit_image(image_bytes: bytes) -> bool:
                 
         return False
     except Exception as e:
-        print(f"NudeNet scan error: {e}")
-        return True # Fail closed. If AI crashes, block the image.
+        log.error(f"NudeNet scan error on temp file {temp_path}: {e}")
+        return True 
     finally:
         if temp_path:
             try: os.remove(temp_path)
-            except: pass
+            except OSError: pass
 
-# --- HELPER: EVIDENCE THREAD CREATION ---
-async def create_evidence_thread(report_id: str, pedo_name: str, report_msg: discord.Message):
-    thread_name = f"{report_id} - {pedo_name[:40]}" if pedo_name else report_id
+async def create_evidence_thread(report_id: str, reported_handle: str, report_msg: discord.Message):
+    thread_name = f"{report_id} - {reported_handle[:40]}" if reported_handle else report_id
     try:
         thread = await report_msg.create_thread(name=thread_name, auto_archive_duration=1440)
         return thread
     except discord.HTTPException as e:
-        print(f"Failed to create evidence thread: {e}")
+        log.error(f"Failed to create evidence thread for {report_id}: {e}")
         return None
 
-# --- TRIAGE VIEW (For Images) ---
+def get_consent_reference(country_raw: str, victim_sex: str):
+    """Helper to lookup consent reference based on country and victim sex."""
+    country_data = CONSENT_LAWS.get(country_raw)
+    if not country_data:
+        sorted_keys = sorted([k for k in CONSENT_LAWS.keys() if len(k) >= 4], key=len, reverse=True)
+        for key in sorted_keys:
+            if key in country_raw:
+                country_data = CONSENT_LAWS[key]
+                break
+    
+    if not country_data:
+        return None, False, ""
+        
+    is_jurisdiction_specific = country_data.get("jurisdiction_specific", False)
+    notes = country_data.get("notes", "")
+    
+    if victim_sex == "Male":
+        return country_data.get("male"), is_jurisdiction_specific, notes
+    elif victim_sex == "Female":
+        return country_data.get("female"), is_jurisdiction_specific, notes
+    else:
+        return None, is_jurisdiction_specific, notes
+
+
 class TriageView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
     async def approve_image(self, interaction: discord.Interaction):
         if not is_moderator(interaction):
-            return await interaction.response.send_message("You do not have permission.", ephemeral=True)
+            return await interaction.response.send_message("You do not have permission to do this.", ephemeral=True)
         
         await interaction.response.defer(ephemeral=True)
 
         msg = interaction.message
         match = re.search(r'PR-\d{8}-[A-F0-9]{4}', msg.content)
         if not match:
-            return await interaction.followup.send("Could not find Report ID in message.", ephemeral=True)
+            return await interaction.followup.send("Could not find the Report ID in the message.", ephemeral=True)
         report_id = match.group(0)
 
-        ev_count = 0
-        thread_id = None
-        pedo_name = None
-        report_msg_id = None
-        
         async with aiosqlite.connect("reports.db") as db:
-            async with db.execute("SELECT evidence_count, thread_id, pedo_name, msg_id FROM reports WHERE report_id=?", (report_id,)) as cur:
+            async with db.execute("SELECT status, thread_id, reported_handle, msg_id FROM reports WHERE report_id=?", (report_id,)) as cur:
                 row = await cur.fetchone()
-                if row:
-                    ev_count, thread_id, pedo_name, report_msg_id = row
-
-        remaining = MAX_EVIDENCE - ev_count
-        if remaining <= 0:
-            return await interaction.followup.send(f"❌ Cannot approve. Report already reached max evidence ({MAX_EVIDENCE}).", ephemeral=True)
+                if not row:
+                    return await interaction.followup.send("Report not found in database.", ephemeral=True)
+                if row[0] in ["Resolved", "False Report"]:
+                    return await interaction.followup.send("Case is closed. Cannot approve evidence.", ephemeral=True)
+                
+                status, thread_id, reported_handle, report_msg_id = row
 
         if not thread_id and report_msg_id:
             try:
                 report_msg = await secure_channel_cache.fetch_message(report_msg_id)
-                thread = await create_evidence_thread(report_id, pedo_name, report_msg)
+                thread = await create_evidence_thread(report_id, reported_handle, report_msg)
                 if thread:
                     thread_id = thread.id
                     async with aiosqlite.connect("reports.db") as db:
                         await db.execute("UPDATE reports SET thread_id=?, thread_created_timestamp=? WHERE report_id=?", (thread_id, time.time(), report_id))
                         await db.commit()
             except discord.HTTPException as e:
-                print(f"Failed to create thread: {e}")
+                log.error(f"Failed to create thread for {report_id}: {e}")
 
         if not thread_id:
             return await interaction.followup.send("Failed to find or create evidence thread.", ephemeral=True)
@@ -238,35 +490,45 @@ class TriageView(discord.ui.View):
         except (discord.NotFound, discord.Forbidden):
             return await interaction.followup.send("Failed to find evidence thread.", ephemeral=True)
 
-        attachments_to_process = msg.attachments[:remaining]
+        attachments_to_process = msg.attachments
         success_count = 0
         
         for att in attachments_to_process:
+            async with aiosqlite.connect("reports.db") as db:
+                await db.execute("BEGIN IMMEDIATE")
+                cursor = await db.execute("UPDATE reports SET evidence_count = evidence_count + 1 WHERE report_id=? AND evidence_count < ?", 
+                                         (report_id, MAX_EVIDENCE))
+                if cursor.rowcount == 0:
+                    await db.execute("ROLLBACK")
+                    break 
+                
+                await db.execute("INSERT INTO evidence (report_id, discord_message_id, uploader_id, filename, status, created_at) VALUES (?, ?, ?, ?, 'approved', ?)",
+                                 (report_id, msg.id, msg.author.id, att.filename, datetime.now(timezone.utc).isoformat()))
+                await db.execute("COMMIT")
+
             try:
                 file = await att.to_file()
                 await thread.send(content=f"📸 **Approved Evidence for {report_id}**", file=file)
                 success_count += 1
-            except discord.HTTPException:
-                pass 
+            except discord.HTTPException as e:
+                log.error(f"Failed to forward file {att.filename} for {report_id}: {e}")
 
         if success_count == 0:
-            return await interaction.followup.send("Failed to forward files to the thread. The triage message was kept.", ephemeral=True)
+            return await interaction.followup.send("Failed to forward files or max evidence reached.", ephemeral=True)
 
         try:
             await msg.delete()
+        except discord.NotFound:
+            pass
         except Exception as e:
-            print(f"Failed to delete triage message instantly: {e}")
-        
-        if success_count > 0:
-            async with aiosqlite.connect("reports.db") as db:
-                await db.execute("UPDATE reports SET evidence_count = evidence_count + ? WHERE report_id=?", (success_count, report_id))
-                await db.commit()
+            log.error(f"Failed to delete triage message for {report_id}: {e}")
 
+        await log_audit_action(report_id, interaction.user.id, "evidence_approved")
         await interaction.followup.send(f"Approved {success_count} image(s). Moved to case thread.", ephemeral=True)
 
     async def reject_image(self, interaction: discord.Interaction):
         if not is_moderator(interaction):
-            return await interaction.response.send_message("You do not have permission.", ephemeral=True)
+            return await interaction.response.send_message("You do not have permission to do this.", ephemeral=True)
         
         await interaction.response.defer(ephemeral=True)
         
@@ -275,9 +537,13 @@ class TriageView(discord.ui.View):
         except discord.NotFound:
             pass
         except Exception as e:
-            print(f"Error deleting triage image: {e}")
+            log.error(f"Error deleting triage image: {e}")
             
-        await interaction.followup.send("Image nuked from #pedo-proof and blocked from logs.", ephemeral=True)
+        report_id_match = re.search(r'PR-\d{8}-[A-F0-9]{4}', interaction.message.content)
+        if report_id_match:
+            await log_audit_action(report_id_match.group(0), interaction.user.id, "evidence_rejected")
+
+        await interaction.followup.send("Image nuked from the channel and blocked from logs.", ephemeral=True)
 
     @discord.ui.button(label="✅ Approve & Move", style=discord.ButtonStyle.success, custom_id="triage_approve")
     async def approve_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -287,7 +553,7 @@ class TriageView(discord.ui.View):
     async def delete_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.reject_image(interaction)
 
-# --- PERSISTENT MOD VIEW (For Report Status) ---
+
 class ModActionView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -303,21 +569,15 @@ class ModActionView(discord.ui.View):
 
         await interaction.response.defer(ephemeral=True)
 
-        thread_id = None
-        pedo_name = None
-        msg_id = None
-        forum_thread_id = None
-        
         async with aiosqlite.connect("reports.db") as db:
-            async with db.execute("SELECT status, thread_id, pedo_name, msg_id, forum_thread_id FROM reports WHERE report_id=?", (report_id,)) as cur:
+            async with db.execute("SELECT status, thread_id, reported_handle, msg_id, forum_thread_id FROM reports WHERE report_id=?", (report_id,)) as cur:
                 row = await cur.fetchone()
                 if row and row[0] in ["Resolved", "False Report"]:
                     return await interaction.followup.send("This case is already closed and cannot be modified.", ephemeral=True)
                 if row: 
-                    thread_id = row[1]
-                    pedo_name = row[2]
-                    msg_id = row[3]
-                    forum_thread_id = row[4]
+                    thread_id, reported_handle, msg_id, forum_thread_id = row[1], row[2], row[3], row[4]
+                else:
+                    return await interaction.followup.send("Report not found.", ephemeral=True)
 
             await db.execute("UPDATE reports SET status=?, assigned_mod=?, closed=? WHERE report_id=?", 
                              (status, interaction.user.id, datetime.now(timezone.utc).isoformat() if is_closed else None, report_id))
@@ -341,7 +601,7 @@ class ModActionView(discord.ui.View):
 
         if status == "Under Review" and not thread_id:
             try:
-                thread = await create_evidence_thread(report_id, pedo_name, interaction.message)
+                thread = await create_evidence_thread(report_id, reported_handle, interaction.message)
                 if thread:
                     thread_id = thread.id
                     async with aiosqlite.connect("reports.db") as db:
@@ -349,13 +609,14 @@ class ModActionView(discord.ui.View):
                         await db.commit()
                     await thread.send("🔍 This case is now under review. Evidence will be posted here.")
             except Exception as e:
-                print(f"Failed to auto-create evidence thread: {e}")
+                log.error(f"Failed to auto-create evidence thread for {report_id}: {e}")
 
         try:
             await interaction.message.edit(embed=embed, view=view_to_send)
-        except: pass
+        except discord.NotFound:
+            log.warning(f"Failed to edit message for {report_id}: Message not found.")
 
-        thread_name = pedo_name[:90] if pedo_name else report_id
+        thread_name = reported_handle[:90] if reported_handle else report_id
         
         if not forum_thread_id and forum_channel_cache:
             try:
@@ -368,27 +629,55 @@ class ModActionView(discord.ui.View):
                     forum_thread = forum_thread_obj[0]
                 
                 forum_thread_id = forum_thread.id
+                
+                if hasattr(forum_thread_obj, 'message') and forum_thread_obj.message:
+                    forum_msg_id = forum_thread_obj.message.id
+                else:
+                    forum_msg_id = None 
+                
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("UPDATE reports SET forum_thread_id=? WHERE report_id=?", (forum_thread_id, report_id))
+                    await db.execute("UPDATE reports SET forum_thread_id=?, forum_msg_id=? WHERE report_id=?", (forum_thread_id, forum_msg_id, report_id))
                     await db.commit()
             except Exception as e:
-                print(f"Failed to create forum post: {e}")
+                log.error(f"Failed to create forum post for {report_id}: {e}")
         elif forum_thread_id:
             try:
-                forum_thread = await bot.fetch_channel(forum_thread_id)
-                forum_msg = await forum_thread.fetch_message(forum_thread_id)
-                await forum_msg.edit(embed=embed)
+                async with aiosqlite.connect("reports.db") as db:
+                    async with db.execute("SELECT forum_msg_id FROM reports WHERE report_id=?", (report_id,)) as cur:
+                        row = await cur.fetchone()
+                        forum_msg_id = row[0] if row and row[0] else None
+                
+                if forum_msg_id is None:
+                    log.warning(f"Cannot update forum post for {report_id}: forum_msg_id is missing from DB.")
+                else:
+                    forum_thread = await bot.fetch_channel(forum_thread_id)
+                    forum_msg = await forum_thread.fetch_message(forum_msg_id)
+                    await forum_msg.edit(embed=embed)
             except Exception as e:
-                print(f"Failed to update forum post: {e}")
+                log.error(f"Failed to update forum post for {report_id}: {e}")
+
+        if mod_log_channel_cache:
+            try:
+                log_embed = discord.Embed(
+                    title=f"Case Status Updated: {report_id}",
+                    description=f"Status changed to **{status}** by {interaction.user.mention}.",
+                    color=discord.Color.blue(),
+                    timestamp=datetime.now(timezone.utc)
+                )
+                await mod_log_channel_cache.send(embed=log_embed)
+            except Exception as e:
+                log.error(f"Failed to send mod log for {report_id}: {e}")
 
         if is_closed and thread_id:
             try:
                 thread = await bot.fetch_channel(thread_id)
                 await thread.send("🔒 This case has been closed. The thread is now locked.")
                 await thread.edit(archived=True, locked=True)
-            except discord.HTTPException:
-                pass
+            except discord.HTTPException as e:
+                log.error(f"Failed to lock thread for {report_id}: {e}")
                 
+        await log_audit_action(report_id, interaction.user.id, f"status_changed_{status}")
+        
         if is_closed:
             await interaction.followup.send(f"Report status updated to: **{status}**. Case archived and thread locked.", ephemeral=True)
         else:
@@ -406,7 +695,7 @@ class ModActionView(discord.ui.View):
     async def false_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.update_report(interaction, "False Report", is_closed=True)
 
-# --- ANONYMITY BUTTONS ---
+
 class AnonView(discord.ui.View):
     def __init__(self, report_type: str):
         super().__init__(timeout=300)
@@ -417,7 +706,7 @@ class AnonView(discord.ui.View):
         if self.message:
             for item in self.children: item.disabled = True
             try: await self.message.edit(view=self)
-            except: pass
+            except discord.NotFound: pass
 
     @discord.ui.button(label="Stay Anonymous", style=discord.ButtonStyle.green)
     async def anon_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -427,52 +716,62 @@ class AnonView(discord.ui.View):
     async def name_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ReportModal(is_anonymous=False, report_type=self.report_type))
 
-# --- REPORT FORM (MODAL) ---
+
 class ReportModal(discord.ui.Modal, title='Predator Report Form'):
     def __init__(self, is_anonymous: bool, report_type: str):
         super().__init__()
         self.is_anonymous = is_anonymous
         self.report_type = report_type
 
-    online_name = discord.ui.TextInput(label="Predator's Online Name/Handle", placeholder="Discord username, display name, or tag", required=True, max_length=100)
-    age_pedo = discord.ui.TextInput(label="Predator's Age", placeholder="Numbers only (e.g., 24)", required=True, max_length=3)
-    age_victim = discord.ui.TextInput(label="Victim's Age", placeholder="Numbers only (e.g., 15)", required=True, max_length=3)
+    online_name = discord.ui.TextInput(label="Reported Subject's Online Handle", placeholder="Discord username, display name, or tag", required=True, max_length=100)
+    age_pedo = discord.ui.TextInput(label="Reported Subject's Age", placeholder="Numbers only (e.g., 24)", required=True, max_length=3)
+    age_victim = discord.ui.TextInput(label="Victim Age & Sex (M/F)", placeholder="e.g., 15 M or 16 Female", required=True, max_length=20)
     country = discord.ui.TextInput(label="Country/Jurisdiction", placeholder="e.g., USA, UK, Malaysia", required=True, max_length=50)
-    details = discord.ui.TextInput(label="Full Details of Incident", style=discord.TextStyle.paragraph, placeholder="Explain everything. If you know the predator's real name, put it here.", required=True, max_length=2000)
+    details = discord.ui.TextInput(label="Full Details of Incident", style=discord.TextStyle.paragraph, placeholder="Explain the allegation. If you know the subject's real name, put it here.", required=True, max_length=2000)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
+        try:
+            pedo_age_str = self.age_pedo.value.strip()
+            pedo_age_match = re.search(r'\d+', pedo_age_str)
+            if not pedo_age_match: raise ValueError("Invalid subject age")
+            pedo_age = int(pedo_age_match.group())
+            if not (1 <= pedo_age <= 120): raise ValueError("Invalid subject age")
+
+            victim_input_str = self.age_victim.value.strip()
+            age_match = re.search(r'\d+', victim_input_str)
+            if not age_match: raise ValueError("Invalid victim age")
+            victim_age = int(age_match.group())
+            if not (1 <= victim_age <= 120): raise ValueError("Invalid victim age")
+            
+            letters_only = re.sub(r'[^a-zA-Z]', '', victim_input_str).lower()
+            if 'female' in letters_only or letters_only == 'f':
+                victim_sex = "Female"
+            elif 'male' in letters_only or letters_only == 'm':
+                victim_sex = "Male"
+            else:
+                raise ValueError("Missing victim sex (M/F)")
+
+        except ValueError as e:
+            return await interaction.followup.send(f"Validation Error: {str(e)}. Please ensure you include numbers for ages and M/F for the victim's sex.", ephemeral=True)
+
         async with aiosqlite.connect("reports.db") as db:
-            async with db.execute("SELECT last_report FROM rate_limits WHERE user_id=?", (interaction.user.id,)) as cur:
-                row = await cur.fetchone()
-                if row and (time.time() - row[0]) < 300:
-                    return await interaction.followup.send("We hear you, and we want to help. To protect our system, please wait about 5 minutes before submitting another report.", ephemeral=True)
+            await db.execute("BEGIN IMMEDIATE")
+            cursor = await db.execute("SELECT last_report FROM rate_limits WHERE user_id=?", (interaction.user.id,))
+            row = await cursor.fetchone()
+            if row and (time.time() - row[0]) < 300:
+                await db.execute("ROLLBACK")
+                return await interaction.followup.send("Thank you for reaching out. To ensure our system can handle every report securely, please wait about 5 minutes before submitting another one.", ephemeral=True)
             await db.execute("""INSERT INTO rate_limits (user_id, last_report) VALUES (?, ?) 
                                 ON CONFLICT(user_id) DO UPDATE SET last_report = excluded.last_report""", 
                              (interaction.user.id, time.time()))
-            await db.commit()
-
-        try:
-            pedo_age_str = self.age_pedo.value.strip()
-            victim_age_str = self.age_victim.value.strip()
-            if not pedo_age_str.isdigit() or not victim_age_str.isdigit(): raise ValueError
-            pedo_age = int(pedo_age_str)
-            victim_age = int(victim_age_str)
-            if not (1 <= pedo_age <= 120) or not (1 <= victim_age <= 120): raise ValueError
-        except ValueError:
-            return await interaction.followup.send("It looks like there was a small typo in the age fields. Please try again and use numbers only (like 16 or 24).", ephemeral=True)
+            await db.execute("COMMIT")
 
         country_raw = re.sub(r'[^a-zA-Z0-9]', '', self.country.value).lower()
         country_str = self.country.value.strip()
         
-        legal_age = CONSENT_LAWS.get(country_raw)
-        if not legal_age:
-            sorted_keys = sorted(CONSENT_LAWS.keys(), key=len, reverse=True)
-            for key in sorted_keys:
-                if key in country_raw:
-                    legal_age = CONSENT_LAWS[key]
-                    break
+        legal_age, is_jurisdiction_specific, consent_notes = get_consent_reference(country_raw, victim_sex)
 
         date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
         report_id = f"PR-{date_str}-{secrets.token_hex(4).upper()}"
@@ -492,9 +791,9 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
         else:
             embed.add_field(name="Reporter Contact", value=f"{interaction.user.mention} ({interaction.user.name})", inline=False)
 
-        embed.add_field(name="Online Name", value=self.online_name.value, inline=True)
-        embed.add_field(name="Predator Age", value=str(pedo_age), inline=True)
-        embed.add_field(name="Victim Age", value=str(victim_age), inline=True)
+        embed.add_field(name="Online Handle", value=self.online_name.value, inline=True)
+        embed.add_field(name="Subject Age", value=str(pedo_age), inline=True)
+        embed.add_field(name="Victim Info", value=f"{victim_age} ({victim_sex})", inline=True)
         embed.add_field(name="Jurisdiction", value=country_str, inline=True)
 
         false_report_flag = False
@@ -502,9 +801,14 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
             false_report_flag = True
             embed.add_field(name="🚨 POTENTIAL FALSE REPORT 🚨", value="System flagged this due to impossible or unrealistic ages. Review carefully.", inline=False)
 
-        # Fix 2: Explicitly state if it's illegal/statutory rape
-        if not false_report_flag and legal_age is not None and victim_age < legal_age:
-            embed.add_field(name="⚠️ STATUTORY / AGE OF CONSENT FLAG ⚠️", value=f"**Potential Illegal Activity:** Victim's age ({victim_age}) is below the general age of consent ({legal_age}) in {country_str}. This may constitute statutory rape or illegal sexual activity depending on local laws. Please verify specific regional exceptions.", inline=False)
+        if not false_report_flag:
+            if legal_age is not None and victim_age < legal_age:
+                embed.add_field(name="⚠️ AGE THRESHOLD REVIEW SIGNAL ⚠️", value=f"**Moderator review required.** The supplied victim age ({victim_age}) is below the configured reference threshold ({legal_age}) for the reported sex and jurisdiction. This is a screening signal only and does not determine whether conduct is criminal.", inline=False)
+            elif legal_age is None and (is_jurisdiction_specific or consent_notes):
+                base_msg = "The reference dataset does not provide a single numeric threshold for the reported victim sex in this jurisdiction. A moderator must review the applicable law."
+                if consent_notes:
+                    base_msg += f" ({consent_notes})"
+                embed.add_field(name="⚠️ LEGAL REVIEW REQUIRED ⚠️", value=base_msg, inline=False)
 
         global secure_channel_cache
         if not secure_channel_cache:
@@ -512,42 +816,55 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
 
         async with aiosqlite.connect("reports.db") as db:
             try:
-                await db.execute("INSERT INTO reports (report_id, report_type, reporter_id, status, created, evidence_count, is_anonymous, pedo_name) VALUES (?, ?, ?, 'Pending', ?, 0, ?, ?)", 
-                                 (report_id, self.report_type, interaction.user.id, datetime.now(timezone.utc).isoformat(), 1 if self.is_anonymous else 0, self.online_name.value))
+                await db.execute("PRAGMA foreign_keys = ON")
+                await db.execute("INSERT INTO reports (report_id, report_type, reporter_id, status, created, evidence_count, is_anonymous, reported_handle, victim_sex) VALUES (?, ?, ?, 'Pending', ?, 0, ?, ?, ?)", 
+                                 (report_id, self.report_type, interaction.user.id, datetime.now(timezone.utc).isoformat(), 1 if self.is_anonymous else 0, self.online_name.value, victim_sex))
+                
+                await db.execute("DELETE FROM pending_uploads WHERE user_id=?", (interaction.user.id,))
+                await db.execute("INSERT OR REPLACE INTO pending_uploads (user_id, report_id, thread_id, msg_id, last_activity, created_timestamp) VALUES (?, ?, NULL, NULL, ?, ?)",
+                                 (interaction.user.id, report_id, time.time(), time.time()))
                 await db.commit()
-            except Exception as e:
-                print(f"DB Insert failed: {e}")
-                return await interaction.followup.send("I'm sorry, we ran into a technical issue saving your report. Please try again in a moment.", ephemeral=True)
+            except aiosqlite.Error as e:
+                log.error(f"DB Insert failed for {report_id}: {e}")
+                return await interaction.followup.send("We ran into a technical issue saving your report. Please try again in a moment.", ephemeral=True)
 
         try:
             report_msg = await secure_channel_cache.send(embed=embed, view=ModActionView())
+            async with aiosqlite.connect("reports.db") as db:
+                await db.execute("UPDATE reports SET msg_id=? WHERE report_id=?", (report_msg.id, report_id))
+                await db.commit()
         except discord.HTTPException as e:
-            print(f"Failed to send to secure channel: {e}")
+            log.error(f"Failed to send to secure channel for {report_id}: {e}")
             async with aiosqlite.connect("reports.db") as db:
                 await db.execute("DELETE FROM reports WHERE report_id=?", (report_id,))
+                await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                 await db.commit()
-            return await interaction.followup.send("I'm sorry, we ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
+            return await interaction.followup.send("We ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
 
-        async with aiosqlite.connect("reports.db") as db:
-            await db.execute("UPDATE reports SET msg_id=? WHERE report_id=?", (report_msg.id, report_id))
-            await db.execute("INSERT OR REPLACE INTO pending_uploads (user_id, report_id, thread_id, msg_id, last_activity, created_timestamp) VALUES (?, ?, NULL, ?, ?, ?)",
-                             (interaction.user.id, report_id, report_msg.id, time.time(), time.time()))
-            await db.commit()
-
-        await interaction.followup.send("Thank you for your courage in speaking up. We believe you, and your report has been safely received.\n\n**Please check your Direct Messages (DMs) from me** to upload any screenshots you have.", ephemeral=True)
+        await log_audit_action(report_id, interaction.user.id, "report_created")
+        await interaction.followup.send("Thank you for reaching out. It takes courage to speak up, and your report has been securely received and forwarded to our team.\n\n**Please check your Direct Messages (DMs) from me** to upload any screenshots you have.", ephemeral=True)
 
         try:
             await interaction.user.send(
-                f"Hi there. We received your report (**{report_id}**). We believe you, and our team is reviewing your message now.\n\n"
-                f"If you have screenshots of the conversations, you can upload them directly here in our DMs. Take your time. When you're finished, just type `done`. You are safe here.\n\n"
+                f"Hi there. We've received your report (**{report_id}**), and our team will be reviewing the information you provided.\n\n"
+                f"If you have screenshots of the conversations, you can upload them directly here in our DMs. Take your time. When you're finished, just type `done`. This channel is private and secure.\n\n"
                 f"⚠️ **IMPORTANT DISCLAIMER REGARDING EVIDENCE:**\n"
-                f"Please **DO NOT** upload explicit nudity or Child Sexual Abuse Material (CSAM). Our system automatically scans for and blocks explicit images to protect our team and comply with the law.\n"
-                f"If your chat logs contain explicit images or CSAM, **please crop them out or redact them** so that only the text of the conversation is visible. We only need to see the text to verify the report."
+                f"Please **DO NOT** upload explicit nudity or Child Sexual Abuse Material (CSAM). Our system automatically scans for explicit content to protect our moderation team. If your chat logs or evidence contain explicit imagery, you must crop it out or redact it so that only the text of the conversation is visible."
             )
         except discord.Forbidden:
             pass
 
-# --- ISSUE SYSTEM VIEWS & MODALS ---
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        log.error(f"Modal error in {self.__class__.__name__}: {error}", exc_info=True)
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("Something went wrong processing this. Please try again.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Something went wrong processing this. Please try again.", ephemeral=True)
+        except Exception:
+            pass
+
+
 class IssueReplyModal(discord.ui.Modal, title='Reply to Issue Reporter'):
     def __init__(self, reporter_id: int):
         super().__init__()
@@ -571,6 +888,17 @@ class IssueReplyModal(discord.ui.Modal, title='Reply to Issue Reporter'):
             await interaction.followup.send("Reply sent successfully.", ephemeral=True)
         except discord.Forbidden:
             await interaction.followup.send("Failed to send DM. The user has their DMs closed.", ephemeral=True)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        log.error(f"Modal error in {self.__class__.__name__}: {error}", exc_info=True)
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("Something went wrong processing this. Please try again.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Something went wrong processing this. Please try again.", ephemeral=True)
+        except Exception:
+            pass
+
 
 class IssueView(discord.ui.View):
     def __init__(self):
@@ -619,14 +947,14 @@ class IssueView(discord.ui.View):
         await interaction.message.edit(embed=embed, view=self)
         await interaction.response.send_message("Issue marked as false/invalid.", ephemeral=True)
 
-# --- SLASH COMMANDS ---
+
 class ReportGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="report", description="Report an incident to the moderation team")
 
     async def _send_view(self, interaction: discord.Interaction, report_type: str):
         view = AnonView(report_type=report_type)
-        await interaction.response.send_message(f"We are so sorry you are going through this. You selected **{report_type}**. Please choose how you would like to submit your report to our team:", view=view, ephemeral=True)
+        await interaction.response.send_message(f"You selected **{report_type}**. Please know that this process is entirely confidential. Choose how you would like to submit your report to our team:", view=view, ephemeral=True)
         try:
             view.message = await interaction.original_response()
         except Exception:
@@ -693,7 +1021,7 @@ class SystemGroup(app_commands.Group):
                 
             await interaction.followup.send("Thank you, your issue has been reported to the developers.", ephemeral=True)
         except Exception as e:
-            print(f"Failed to submit issue: {e}")
+            log.error(f"Failed to submit issue: {e}")
             await interaction.followup.send("Failed to submit the issue. Please try again later.", ephemeral=True)
 
 bot.tree.add_command(SystemGroup())
@@ -731,6 +1059,7 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
             await db.execute("INSERT INTO dm_replies (message_id, report_id, user_id) VALUES (?, ?, ?)", 
                              (sent_msg.id, report_id, reporter_id))
             await db.commit()
+        await log_audit_action(report_id, interaction.user.id, "reporter_contacted")
         await interaction.followup.send("Your message has been sent to them safely.", ephemeral=True)
     except discord.Forbidden:
         await interaction.followup.send("I couldn't reach them. It looks like they have their DMs closed.", ephemeral=True)
@@ -738,48 +1067,41 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
 @bot.tree.command(name="resources", description="Get confidential support resources for trauma, abuse, and image removal.")
 async def resources(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="You Are Not Alone",
-        description="If you or someone you know is in danger or needs support, please reach out to the resources below. There are people who care and want to help you through this.",
+        title="Support Resources",
+        description="If you or someone you know is in danger or needs support, please reach out to the resources below.",
         color=discord.Color.blue(),
         timestamp=datetime.now(timezone.utc)
     )
-    embed.add_field(name="🆘 Immediate Crisis Support (US/Canada)", value="**Crisis Text Line:** Text HOME to `741741`\n**Childhelp National Child Abuse:** Call/Text `1-800-422-4453`\n**988 Suicide & Crisis Lifeline:** Call or Text `988`", inline=False)
-    embed.add_field(name="🛑 Sexual Abuse & Exploitation (US)", value="**RAINN (Rape/Abuse/Incest):** `1-800-656-HOPE` | [rainn.org](https://www.rainn.org)\n**NCMEC CyberTipline:** [report.cybertipline.org](https://report.cybertipline.org)", inline=False)
-    embed.add_field(name="🇬🇧 United Kingdom", value="**Childline:** `0800 1111` | [childline.org.uk](https://www.childline.org.uk)\n**NSPCC:** `0808 800 5000` | [nspcc.org.uk](https://www.nspcc.org.uk)\n**Rape Crisis:** `0808 802 9999` | [rapecrisis.org.uk](https://rapecrisis.org.uk)", inline=False)
-    embed.add_field(name="🇨🇦 Canada", value="**Kids Help Phone:** `1-800-668-6868` | [kidshelpphone.ca](https://kidshelpphone.ca)\n**Canadian Centre for Child Protection:** [protectchildren.ca](https://www.protectchildren.ca)", inline=False)
-    embed.add_field(name="🇦🇺 Australia", value="**Kids Helpline:** `1800 55 1800` | [kidshelpline.com.au](https://www.kidshelpline.com.au)\n**Bravehearts:** `1800 272 831` | [bravehearts.org.au](https://bravehearts.org.au)", inline=False)
-    embed.add_field(name="🇮🇳 India", value="**Childline India:** `1098` | [childlineindia.org.in](https://www.childlineindia.org.in)\n**Vandrevala Foundation:** `9999 666 555`", inline=False)
-    embed.add_field(name="🌍 International Support", value="**Befrienders Worldwide:** [befrienders.org](https://www.befrienders.org)\n**Find A Helpline:** [findahelpline.com](https://findahelpline.com)\n**International Association for Suicide Prevention:** [iasp.info](https://www.iasp.info)", inline=False)
-    embed.add_field(name="📸 Removing Explicit Images (Under 18 & Adults)", value="**Take It Down (NCMEC - Under 18):** [takendown.org](https://takendown.org)\n**StopNCII (Adults 18+):** [stopncii.org](https://stopncii.org)", inline=False)
-    embed.add_field(name="💻 Sextortion / Online Blackmail", value="**FBI Internet Crime Complaint Center:** [ic3.gov](https://www.ic3.gov)\n**Stop Sextortion (NCMEC):** [stopsextortion.com](https://www.stopsextortion.com)", inline=False)
-    embed.set_footer(text="If you are in immediate physical danger, please contact your local emergency services (e.g., 911, 999, 112).")
+    for resource in CRISIS_RESOURCES:
+        embed.add_field(name=resource['name'], value=resource['value'], inline=False)
+    
+    embed.set_footer(text="If you are in immediate physical danger, please contact your local emergency services.")
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-# --- GLOBAL SLASH COMMAND ERROR HANDLER ---
+
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    log.error(f"App command error: {error}")
     try:
         if interaction.response.is_done():
-            await interaction.followup.send(f"An error occurred: `{error}`", ephemeral=True)
+            await interaction.followup.send("An unexpected error occurred.", ephemeral=True)
         else:
-            await interaction.response.send_message(f"An error occurred: `{error}`", ephemeral=True)
+            await interaction.response.send_message("An unexpected error occurred.", ephemeral=True)
     except Exception:
         pass 
 
-# --- DM ATTACHMENT & REPLY HANDLER ---
+
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot: return
 
-    # Handle pings in servers
     if message.guild and bot.user.mentioned_in(message) and not message.mention_everyone:
         if message.content.strip() in [f"<@{bot.user.id}>", f"<@!{bot.user.id}>"]:
-            await message.reply("Hi! I am Xabat, I'm here to help you with any traumatic experiences such as rape, grooming, etc. If you would like to report something, kindly use the `/report` commands!! If you want helpline resources, use /resources. Thanks!", mention_author=False)
+            await message.reply("Hi! I am Xabat, I'm here to help you with reporting traumatic experiences. If you would like to report something, kindly use the `/report` commands!! If you want helpline resources, use /resources.", mention_author=False)
             return
 
     if isinstance(message.channel, discord.DMChannel):
-        # Check for DM reply FIRST to prevent upload session hijacking
         if message.reference and message.reference.message_id:
             async with aiosqlite.connect("reports.db") as db:
                 async with db.execute("SELECT report_id FROM dm_replies WHERE message_id=?", (message.reference.message_id,)) as cur:
@@ -798,34 +1120,63 @@ async def on_message(message: discord.Message):
                                 display_name = "Anonymous" if is_anon else message.author.name
                                 content = f"💬 **Reply from {display_name} ({r_id})**:\n{message.content}"
                                 
-                                files = []
-                                for att in message.attachments[:10]:
-                                    try:
-                                        files.append(await att.to_file())
-                                    except:
-                                        pass
-                                
                                 if secure_channel_cache:
                                     try:
-                                        await secure_channel_cache.send(content=content, files=files, reference=discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id))
+                                        await secure_channel_cache.send(content=content, reference=discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id))
                                         try:
                                             await message.add_reaction("✅")
-                                        except:
+                                        except Exception:
                                             pass
-                                    except:
+                                        
+                                        if message.attachments:
+                                            for att in message.attachments[:10]:
+                                                ext = os.path.splitext(att.filename)[1].lower()
+                                                if ext not in ALLOWED_EXTENSIONS or (att.content_type and not att.content_type.startswith('image/')):
+                                                    await message.channel.send(f"I'm sorry, but for safety reasons, we can only accept image files (like .png or .jpg). `{att.filename}` was rejected.")
+                                                    continue
+                                                if att.size > MAX_FILE_SIZE:
+                                                    await message.channel.send(f"I'm sorry, but `{att.filename}` is too large. Please keep images under 10MB.")
+                                                    continue
+                                                
+                                                try:
+                                                    image_bytes = await att.read()
+                                                    scanning_msg = await message.channel.send("🔍 Scanning image for explicit content...")
+                                                    is_explicit = await is_explicit_image(image_bytes)
+                                                    try:
+                                                        await scanning_msg.delete()
+                                                    except Exception:
+                                                        pass
+
+                                                    if is_explicit:
+                                                        await message.channel.send(
+                                                            f"🚫 **UPLOAD BLOCKED**: `{att.filename}` was flagged by our AI as containing explicit nudity.\n\n"
+                                                            f"**DISCLAIMER:** Please **DO NOT** upload explicit nudity or CSAM. If you are a victim of exploitation, please contact local authorities or use `/resources`. "
+                                                            f"Only upload screenshots of text conversations."
+                                                        )
+                                                        if r_id:
+                                                            await log_audit_action(r_id, message.author.id, "evidence_rejected_explicit_reply")
+                                                        continue
+                                                    
+                                                    file = discord.File(io.BytesIO(image_bytes), filename=att.filename)
+                                                    await secure_channel_cache.send(
+                                                        content=f"⚠️ **PENDING TRIAGE: {r_id}**\n*Review image. If safe, click Approve. If illegal, click Delete.*",
+                                                        file=file,
+                                                        view=TriageView()
+                                                    )
+                                                except (discord.HTTPException, discord.Forbidden, discord.NotFound):
+                                                    await message.channel.send(f"I ran into an issue uploading `{att.filename}`. Please try sending it again.")
+                                    except discord.HTTPException:
                                         await message.channel.send("I wasn't able to deliver your message to the team right now. Please try again later.")
                                 return
 
-        # 2. Check for active upload session
         session = None
         async with aiosqlite.connect("reports.db") as db:
-            async with db.execute("SELECT report_id, thread_id, msg_id, last_activity, created_timestamp FROM pending_uploads WHERE user_id=? ORDER BY last_activity DESC LIMIT 1", (message.author.id,)) as cur:
+            async with db.execute("SELECT report_id, thread_id, msg_id, last_activity, created_timestamp FROM pending_uploads WHERE user_id=?", (message.author.id,)) as cur:
                 session = await cur.fetchone()
                 
         if session:
             report_id, thread_id, orig_msg_id, last_activity, created_timestamp = session
             
-            # FIX 1: Check if the case has been closed by a mod!
             case_status = None
             async with aiosqlite.connect("reports.db") as db:
                 async with db.execute("SELECT status FROM reports WHERE report_id=?", (report_id,)) as cur:
@@ -839,101 +1190,108 @@ async def on_message(message: discord.Message):
                 await message.channel.send("This case has been closed by the moderation team. You can no longer upload evidence for it. If you need to submit a new report, please use `/report`.")
                 return
             
-            if time.time() - last_activity > 600 or time.time() - created_timestamp > 3600:
+            if time.time() - last_activity > UPLOAD_SESSION_TIMEOUT or time.time() - created_timestamp > UPLOAD_SESSION_HARD_LIMIT:
                 async with aiosqlite.connect("reports.db") as db:
                     await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                     await db.commit()
-                await message.channel.send("It's been a while since we last spoke. If you still need to upload screenshots, please start a new report by using the `/report` command in the server. Take care.")
+                await message.channel.send("Your upload session has expired. If you still need to upload screenshots, please start a new report by using the `/report` command in the server.")
+                return
+            
+            if message.content.lower().strip() in ['done', 'cancel', 'stop']:
+                async with aiosqlite.connect("reports.db") as db:
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
+                    await db.commit()
+                await message.channel.send("Thank you for providing this information. Your evidence has been passed securely to our team. If we need anything else, we will reach out to you here. Please take care.")
+                return
+
+            if message.attachments:
+                if not secure_channel_cache:
+                    await message.channel.send("I'm having a little trouble connecting to the server right now. Please try again in just a moment.")
+                    return
+
+                ev_count = 0
+                async with aiosqlite.connect("reports.db") as db:
+                    async with db.execute("SELECT evidence_count FROM reports WHERE report_id=?", (report_id,)) as cur:
+                        row = await cur.fetchone()
+                        if row: ev_count = row[0]
+
+                remaining = MAX_EVIDENCE - ev_count
+                if remaining <= 0:
+                    await message.channel.send("We've received the maximum amount of evidence for this case. If you have more, please summarize it in text, or let a moderator know.")
+                    return
+
+                files_sent = 0
+                for att in message.attachments[:remaining]:
+                    ext = os.path.splitext(att.filename)[1].lower()
+                    if ext not in ALLOWED_EXTENSIONS or (att.content_type and not att.content_type.startswith('image/')):
+                        await message.channel.send(f"I'm sorry, but for safety reasons, we can only accept image files (like .png or .jpg). `{att.filename}` was rejected.")
+                        continue
+                    if att.size > MAX_FILE_SIZE:
+                        await message.channel.send(f"I'm sorry, but `{att.filename}` is too large. Please keep images under 10MB.")
+                        continue
+                    
+                    try:
+                        image_bytes = await att.read()
+                        
+                        scanning_msg = await message.channel.send("🔍 Scanning image for explicit content...")
+                        
+                        is_explicit = await is_explicit_image(image_bytes)
+                        
+                        try:
+                            await scanning_msg.delete()
+                        except Exception:
+                            pass
+
+                        if is_explicit:
+                            await message.channel.send(
+                                f"🚫 **UPLOAD BLOCKED**: `{att.filename}` was flagged by our AI as containing explicit nudity.\n\n"
+                                f"**DISCLAIMER:** Please **DO NOT** upload explicit nudity or CSAM. If you are a victim of exploitation, please contact local authorities or use `/resources`. "
+                                f"Only upload screenshots of text conversations."
+                            )
+                            continue
+                        
+                        file = discord.File(io.BytesIO(image_bytes), filename=att.filename)
+                        await secure_channel_cache.send(
+                            content=f"⚠️ **PENDING TRIAGE: {report_id}**\n*Review image. If safe, click Approve. If illegal, click Delete.*",
+                            file=file,
+                            view=TriageView()
+                        )
+                        files_sent += 1
+                        await asyncio.sleep(0.5)
+                    except (discord.HTTPException, discord.Forbidden, discord.NotFound):
+                        await message.channel.send(f"I ran into an issue uploading `{att.filename}`. Please try sending it again.")
+                
+                if files_sent > 0:
+                    async with aiosqlite.connect("reports.db") as db:
+                        await db.execute("UPDATE pending_uploads SET last_activity=? WHERE report_id=?", (time.time(), report_id))
+                        await db.commit()
+                    
+                    word = "image" if files_sent == 1 else "images"
+                    await message.channel.send(f"We've received {files_sent} {word} and passed them to our team. You can send more, or type `done` when you're finished.")
                 return
             else:
-                if message.content.lower().strip() in ['done', 'cancel', 'stop']:
-                    async with aiosqlite.connect("reports.db") as db:
-                        await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
-                        await db.commit()
-                    await message.channel.send("Thank you for trusting us with this. Your evidence has been passed to our team. If we need anything else, we will reach out to you here. Please take care of yourself.")
-                    return
+                await message.channel.send("If you have screenshots, please upload them directly here. When you're finished, type `done`.")
+                return
 
-                if message.attachments:
-                    if not secure_channel_cache:
-                        await message.channel.send("I'm having a little trouble connecting to the server right now. Please try again in just a moment.")
-                        return
-
-                    ev_count = 0
-                    async with aiosqlite.connect("reports.db") as db:
-                        async with db.execute("SELECT evidence_count FROM reports WHERE report_id=?", (report_id,)) as cur:
-                            row = await cur.fetchone()
-                            if row: ev_count = row[0]
-
-                    remaining = MAX_EVIDENCE - ev_count
-                    if remaining <= 0:
-                        await message.channel.send("We've received a lot of evidence for this case already. If you have more, please summarize it in text, or let a moderator know.")
-                        return
-
-                    files_sent = 0
-                    for att in message.attachments[:remaining]:
-                        ext = os.path.splitext(att.filename)[1].lower()
-                        if ext not in ALLOWED_EXTENSIONS or (att.content_type and not att.content_type.startswith('image/')):
-                            await message.channel.send(f"I'm sorry, but for safety reasons, we can only accept image files (like .png or .jpg). `{att.filename}` was rejected.")
-                        elif att.size > MAX_FILE_SIZE:
-                            await message.channel.send(f"I'm sorry, but `{att.filename}` is too large. Please keep images under 10MB.")
-                        else:
-                            try:
-                                image_bytes = await att.read()
-                                
-                                scanning_msg = await message.channel.send("🔍 Scanning image for explicit content...")
-                                
-                                is_explicit = await is_explicit_image(image_bytes)
-                                
-                                try:
-                                    await scanning_msg.delete()
-                                except:
-                                    pass
-
-                                if is_explicit:
-                                    await message.channel.send(
-                                        f"🚫 **UPLOAD BLOCKED**: `{att.filename}` was flagged by our AI as containing explicit nudity.\n\n"
-                                        f"**DISCLAIMER:** Please **DO NOT** upload CSAM or explicit nudity. If you are a victim of exploitation, please contact local authorities or use `/resources`. "
-                                        f"Only upload screenshots of text conversations."
-                                    )
-                                    continue
-                                
-                                file = discord.File(io.BytesIO(image_bytes), filename=att.filename)
-                                await secure_channel_cache.send(
-                                    content=f"⚠️ **PENDING TRIAGE: {report_id}**\n*Review image. If safe, click Approve. If illegal, click Delete.*",
-                                    file=file,
-                                    view=TriageView()
-                                )
-                                files_sent += 1
-                                await asyncio.sleep(0.5)
-                            except (discord.HTTPException, discord.Forbidden, discord.NotFound):
-                                await message.channel.send(f"I ran into an issue uploading `{att.filename}`. Please try sending it again.")
-                    
-                    if files_sent > 0:
-                        async with aiosqlite.connect("reports.db") as db:
-                            await db.execute("UPDATE pending_uploads SET last_activity=? WHERE report_id=?", (time.time(), report_id))
-                            await db.commit()
-                        
-                        word = "image" if files_sent == 1 else "images"
-                        await message.channel.send(f"Thank you. We've safely received {files_sent} {word} and passed them to our team. You can send more, or type `done` when you're finished.")
-                    return
-                else:
-                    await message.channel.send("If you have screenshots, please upload them directly here. When you're finished, type `done`.")
-                    return
-
-        await message.channel.send("Thank you for reaching out. If you need to submit a new report, please use the `/report` command in the server. If a moderator has reached out to you, please reply directly to their message so it goes to the right case.")
+        await message.channel.send("If you need to submit a new report, please use the `/report` command in the server. If a moderator has reached out to you, please reply directly to their message so it goes to the right case.")
 
     await bot.process_commands(message)
 
-# --- BACKGROUND CLEANUP TASK ---
+
 @tasks.loop(hours=1)
 async def cleanup_db():
     try:
         async with aiosqlite.connect("reports.db") as db:
-            await db.execute("DELETE FROM pending_uploads WHERE last_activity < ? OR created_timestamp < ?", (time.time() - 600, time.time() - 3600))
+            await db.execute("PRAGMA foreign_keys = ON")
+            
+            await db.execute("DELETE FROM pending_uploads WHERE last_activity < ? OR created_timestamp < ?", 
+                             (time.time() - UPLOAD_SESSION_TIMEOUT, time.time() - UPLOAD_SESSION_HARD_LIMIT))
+            
             await db.execute("DELETE FROM rate_limits WHERE last_report < ?", (time.time() - 86400,))
             
-            four_months_ago = time.time() - (120 * 86400)
-            async with db.execute("SELECT thread_id, report_id FROM reports WHERE thread_created_timestamp IS NOT NULL AND thread_created_timestamp < ?", (four_months_ago,)) as cur:
+            case_threshold = (datetime.now(timezone.utc) - timedelta(days=CLOSED_CASE_RETENTION_DAYS)).isoformat()
+            
+            async with db.execute("SELECT thread_id, report_id FROM reports WHERE status IN ('Resolved', 'False Report') AND closed IS NOT NULL AND closed < ?", (case_threshold,)) as cur:
                 rows = await cur.fetchall()
                 for row in rows:
                     t_id, r_id = row
@@ -941,25 +1299,30 @@ async def cleanup_db():
                         try:
                             thread = await bot.fetch_channel(t_id)
                             await thread.delete()
-                            await db.execute("UPDATE reports SET thread_id=NULL, thread_created_timestamp=NULL WHERE report_id=?", (r_id,))
                         except discord.NotFound:
-                            await db.execute("UPDATE reports SET thread_id=NULL, thread_created_timestamp=NULL WHERE report_id=?", (r_id,))
+                            pass
                         except Exception as e:
-                            print(f"Failed to delete thread {t_id}: {e}")
+                            log.error(f"Failed to delete thread {t_id} for {r_id}: {e}")
+                    
+                    await db.execute("DELETE FROM evidence WHERE report_id=?", (r_id,))
+                    await db.execute("DELETE FROM reports WHERE report_id=?", (r_id,))
             
-            threshold = (datetime.now(timezone.utc) - timedelta(days=180)).isoformat()
-            await db.execute("DELETE FROM reports WHERE status IN ('Resolved', 'False Report') AND closed IS NOT NULL AND closed < ?", (threshold,))
+            audit_threshold = (datetime.now(timezone.utc) - timedelta(days=AUDIT_LOG_RETENTION_DAYS)).isoformat()
+            await db.execute("DELETE FROM audit_log WHERE timestamp < ?", (audit_threshold,))
+            
             await db.commit()
     except Exception as e:
-        print(f"Database cleanup error: {e}")
+        log.error(f"Database cleanup error: {e}")
 
 @cleanup_db.before_loop
 async def before_cleanup():
     await bot.wait_until_ready()
 
+
 @bot.event
 async def on_ready():
     await init_db()
+    
     bot.add_view(ModActionView())
     bot.add_view(TriageView())
     bot.add_view(IssueView()) 
@@ -969,24 +1332,24 @@ async def on_ready():
     try:
         secure_channel_cache = bot.get_channel(SECURE_CHANNEL_ID) or await bot.fetch_channel(SECURE_CHANNEL_ID)
     except discord.NotFound:
-        print("ERROR: SECURE_CHANNEL_ID not found!")
+        log.error("ERROR: SECURE_CHANNEL_ID not found!")
         
     try:
         mod_log_channel_cache = bot.get_channel(MOD_LOG_CHANNEL_ID) or await bot.fetch_channel(MOD_LOG_CHANNEL_ID)
     except discord.NotFound:
-        print("ERROR: MOD_LOG_CHANNEL_ID not found!")
+        log.error("ERROR: MOD_LOG_CHANNEL_ID not found!")
     
     if ISSUE_CHANNEL_ID != 0:
         try:
             issue_channel_cache = bot.get_channel(ISSUE_CHANNEL_ID) or await bot.fetch_channel(ISSUE_CHANNEL_ID)
         except discord.NotFound:
-            print("ERROR: ISSUE_CHANNEL_ID not found!")
+            log.error("ERROR: ISSUE_CHANNEL_ID not found!")
             
     if FORUM_CHANNEL_ID != 0:
         try:
             forum_channel_cache = bot.get_channel(FORUM_CHANNEL_ID) or await bot.fetch_channel(FORUM_CHANNEL_ID)
         except discord.NotFound:
-            print("ERROR: FORUM_CHANNEL_ID not found!")
+            log.error("ERROR: FORUM_CHANNEL_ID not found!")
     
     if not cleanup_db.is_running():
         cleanup_db.start()
@@ -996,13 +1359,14 @@ async def on_ready():
             if GUILD_ID != 0:
                 guild = discord.Object(id=GUILD_ID)
                 synced = await bot.tree.sync(guild=guild)
-                print(f"Synced {len(synced)} commands to guild {GUILD_ID}.")
+                log.info(f"Synced {len(synced)} commands to guild {GUILD_ID}.")
             else:
                 synced = await bot.tree.sync()
-                print(f"Synced {len(synced)} commands globally.")
+                log.info(f"Synced {len(synced)} commands globally.")
             commands_synced = True
         except Exception as e:
-            print(e)
+            log.error(f"Failed to sync commands: {e}")
+
 # --- RENDER HEALTH CHECK KEEP-ALIVE ---
 web_app = Flask('')
 
