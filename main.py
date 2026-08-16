@@ -1,8 +1,8 @@
 # ==============================================================================
 # Xabat - Predator Reporting & Triage Bot
-# Copyright (C) 2026 skywalker14017
+# Copyright (C) [Year] [Your Name/GitHub Username]
 #
-# Licensed under the Xabat Ethical Source License (XESL) v1.1.
+# Licensed under the Xabat Ethical Source License (XESL) v1.2.
 # ==============================================================================
 
 import discord
@@ -569,13 +569,14 @@ class ModActionView(discord.ui.View):
 
         await interaction.response.defer(ephemeral=True)
 
+        # Fetch reporter_id to send them a DM
         async with aiosqlite.connect("reports.db") as db:
-            async with db.execute("SELECT status, thread_id, reported_handle, msg_id, forum_thread_id FROM reports WHERE report_id=?", (report_id,)) as cur:
+            async with db.execute("SELECT status, thread_id, reported_handle, msg_id, forum_thread_id, reporter_id FROM reports WHERE report_id=?", (report_id,)) as cur:
                 row = await cur.fetchone()
                 if row and row[0] in ["Resolved", "False Report"]:
                     return await interaction.followup.send("This case is already closed and cannot be modified.", ephemeral=True)
                 if row: 
-                    thread_id, reported_handle, msg_id, forum_thread_id = row[1], row[2], row[3], row[4]
+                    thread_id, reported_handle, msg_id, forum_thread_id, reporter_id = row[1], row[2], row[3], row[4], row[5]
                 else:
                     return await interaction.followup.send("Report not found.", ephemeral=True)
 
@@ -677,6 +678,26 @@ class ModActionView(discord.ui.View):
                 log.error(f"Failed to lock thread for {report_id}: {e}")
                 
         await log_audit_action(report_id, interaction.user.id, f"status_changed_{status}")
+
+        # DM the reporter about the status change
+        if reporter_id:
+            try:
+                reporter = bot.get_user(reporter_id) or await bot.fetch_user(reporter_id)
+                if reporter:
+                    dm_msg = ""
+                    if status == "Under Review":
+                        dm_msg = f"Your report (**{report_id}**) is now under review by our moderation team. We will reach out if we need more information."
+                    elif status == "Resolved":
+                        dm_msg = f"Your report (**{report_id}**) has been marked as resolved. Thank you for bringing this to our attention. If you need further help, please use `/resources`."
+                    elif status == "False Report":
+                        dm_msg = f"Your report (**{report_id}**) has been reviewed and closed. Thank you for your submission."
+                    
+                    if dm_msg:
+                        await reporter.send(dm_msg)
+            except discord.Forbidden:
+                log.warning(f"Could not DM reporter {reporter_id} for status update on {report_id} (DMs closed).")
+            except Exception as e:
+                log.error(f"Failed to send status update DM for {report_id}: {e}")
         
         if is_closed:
             await interaction.followup.send(f"Report status updated to: **{status}**. Case archived and thread locked.", ephemeral=True)
@@ -837,7 +858,7 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
             log.error(f"Failed to send to secure channel for {report_id}: {e}")
             async with aiosqlite.connect("reports.db") as db:
                 await db.execute("DELETE FROM reports WHERE report_id=?", (report_id,))
-                await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
+                await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
                 await db.commit()
             return await interaction.followup.send("We ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
 
@@ -1036,11 +1057,11 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
     await interaction.response.defer(ephemeral=True)
     
     async with aiosqlite.connect("reports.db") as db:
-        async with db.execute("SELECT reporter_id, status FROM reports WHERE report_id=?", (report_id,)) as cur:
+        async with db.execute("SELECT reporter_id, status, msg_id FROM reports WHERE report_id=?", (report_id,)) as cur:
             row = await cur.fetchone()
             if not row:
                 return await interaction.followup.send("Report ID not found.", ephemeral=True)
-            reporter_id, status = row
+            reporter_id, status, orig_msg_id = row
 
     if status in ["Resolved", "False Report"]:
         return await interaction.followup.send("This case is closed. You cannot reply to it.", ephemeral=True)
@@ -1053,16 +1074,28 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
     if not reporter:
         return await interaction.followup.send("Could not find the user.", ephemeral=True)
 
+    # 1. Send to victim (no mod name)
+    victim_msg_content = f"**A message from our Moderation Team regarding your report `{report_id}`:**\n\n{message}\n\n*(Reply to this message to respond to the moderation team)*"
     try:
-        sent_msg = await reporter.send(f"**A message from our Moderation Team regarding your report `{report_id}`:**\n\n{message}\n\n*(Reply to this message to respond to the moderation team)*")
+        sent_msg = await reporter.send(victim_msg_content)
         async with aiosqlite.connect("reports.db") as db:
             await db.execute("INSERT INTO dm_replies (message_id, report_id, user_id) VALUES (?, ?, ?)", 
                              (sent_msg.id, report_id, reporter_id))
             await db.commit()
-        await log_audit_action(report_id, interaction.user.id, "reporter_contacted")
-        await interaction.followup.send("Your message has been sent to them safely.", ephemeral=True)
     except discord.Forbidden:
-        await interaction.followup.send("I couldn't reach them. It looks like they have their DMs closed.", ephemeral=True)
+        return await interaction.followup.send("I couldn't reach them. It looks like they have their DMs closed.", ephemeral=True)
+
+    # 2. Send to mod channel (with mod name, rephrased)
+    if secure_channel_cache:
+        mod_msg_content = f"**📤 {interaction.user.mention} ({interaction.user.name}) sent a reply to the reporter for case `{report_id}`:**\n> {message}"
+        try:
+            ref = discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id) if orig_msg_id else None
+            await secure_channel_cache.send(content=mod_msg_content, reference=ref)
+        except discord.HTTPException as e:
+            log.error(f"Failed to send mod reply copy to secure channel: {e}")
+
+    await log_audit_action(report_id, interaction.user.id, "reporter_contacted")
+    await interaction.followup.send("Your message has been sent to them safely.", ephemeral=True)
 
 @bot.tree.command(name="resources", description="Get confidential support resources for trauma, abuse, and image removal.")
 async def resources(interaction: discord.Interaction):
@@ -1096,9 +1129,10 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 async def on_message(message: discord.Message):
     if message.author.bot: return
 
+    # Handle pings in servers
     if message.guild and bot.user.mentioned_in(message) and not message.mention_everyone:
         if message.content.strip() in [f"<@{bot.user.id}>", f"<@!{bot.user.id}>"]:
-            await message.reply("Hi! I am Xabat, I'm here to help you with reporting traumatic experiences. If you would like to report something, kindly use the `/report` commands!! If you want helpline resources, use /resources.", mention_author=False)
+            await message.reply("Hi! I am Xabat, I'm here to help you with reporting traumatic experiences. If you would like to report something, kindly use the `/report` commands! If you want helpline resources, use `/resources`. Thanks!", mention_author=False)
             return
 
     if isinstance(message.channel, discord.DMChannel):
@@ -1192,7 +1226,7 @@ async def on_message(message: discord.Message):
             
             if time.time() - last_activity > UPLOAD_SESSION_TIMEOUT or time.time() - created_timestamp > UPLOAD_SESSION_HARD_LIMIT:
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
                     await db.commit()
                 await message.channel.send("Your upload session has expired. If you still need to upload screenshots, please start a new report by using the `/report` command in the server.")
                 return
