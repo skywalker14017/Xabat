@@ -764,12 +764,10 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
                     conv_thread = conv_thread[0]
                 
                 conversation_thread_id = conv_thread.id
-                
-                # Fetch the initial message to save its ID
-                init_msg = await conv_thread.fetch_message(conv_thread.id)
+                conversation_msg_id = conv_thread.id  # Discord API: starter message ID is the same as thread ID
                 
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("UPDATE reports SET conversation_thread_id=?, conversation_msg_id=? WHERE report_id=?", (conversation_thread_id, init_msg.id, report_id))
+                    await db.execute("UPDATE reports SET conversation_thread_id=?, conversation_msg_id=? WHERE report_id=?", (conversation_thread_id, conversation_msg_id, report_id))
                     await db.commit()
             except Exception as e:
                 log.error(f"Failed to create conversation thread for {report_id}: {e}")
@@ -1014,6 +1012,35 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
         return await interaction.followup.send("I couldn't reach them. It looks like they have their DMs closed.", ephemeral=True)
 
     # 2. Send to conversation thread (with mod name, rephrased)
+    # Auto-create conversation thread if it's missing
+    global conversation_forum_channel_cache
+    if not conversation_forum_channel_cache and CONVERSATION_FORUM_CHANNEL_ID != 0:
+        try:
+            conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+        except discord.NotFound:
+            log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found during /reply!")
+
+    if not conv_thread_id and conversation_forum_channel_cache:
+        try:
+            async with aiosqlite.connect("reports.db") as db:
+                async with db.execute("SELECT reported_handle, is_anonymous FROM reports WHERE report_id=?", (report_id,)) as cur:
+                    row = await cur.fetchone()
+                    if row:
+                        reported_handle, is_anon = row
+                        conv_thread_name = f"{reported_handle[:80] if reported_handle else 'Unknown'} - {report_id}"
+                        reporter_info = "Anonymous" if is_anon else f"<@{reporter_id}>"
+                        init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{report_id}`"
+                        
+                        conv_thread = await conversation_forum_channel_cache.create_thread(name=conv_thread_name, content=init_content)
+                        if isinstance(conv_thread, tuple):
+                            conv_thread = conv_thread[0]
+                        conv_thread_id = conv_thread.id
+                        
+                        await db.execute("UPDATE reports SET conversation_thread_id=?, conversation_msg_id=? WHERE report_id=?", (conv_thread_id, conv_thread_id, report_id))
+                        await db.commit()
+        except Exception as e:
+            log.error(f"Failed to auto-create conversation thread for {report_id}: {e}")
+
     if conv_thread_id:
         try:
             conv_channel = bot.get_channel(conv_thread_id) or await bot.fetch_channel(conv_thread_id)
@@ -1093,6 +1120,35 @@ async def on_message(message: discord.Message):
                                 display_name = "Anonymous" if is_anon else message.author.name
                                 content = f"💬 **Reply from {display_name} ({r_id})**:\n{message.content}"
                                 
+                                # Auto-create conversation thread if it's missing
+                                global conversation_forum_channel_cache
+                                if not conversation_forum_channel_cache and CONVERSATION_FORUM_CHANNEL_ID != 0:
+                                    try:
+                                        conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+                                    except discord.NotFound:
+                                        log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found during on_message!")
+
+                                if not conv_thread_id and conversation_forum_channel_cache:
+                                    try:
+                                        async with aiosqlite.connect("reports.db") as db2:
+                                            async with db2.execute("SELECT reported_handle, is_anonymous FROM reports WHERE report_id=?", (r_id,)) as cur3:
+                                                r3 = await cur3.fetchone()
+                                                if r3:
+                                                    reported_handle, is_anon_temp = r3
+                                                    conv_thread_name = f"{reported_handle[:80] if reported_handle else 'Unknown'} - {r_id}"
+                                                    reporter_info = "Anonymous" if is_anon_temp else f"{message.author.mention} ({message.author.name})"
+                                                    init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{r_id}`"
+                                                    
+                                                    conv_thread = await conversation_forum_channel_cache.create_thread(name=conv_thread_name, content=init_content)
+                                                    if isinstance(conv_thread, tuple):
+                                                        conv_thread = conv_thread[0]
+                                                    conv_thread_id = conv_thread.id
+                                                    
+                                                    await db2.execute("UPDATE reports SET conversation_thread_id=?, conversation_msg_id=? WHERE report_id=?", (conv_thread_id, conv_thread_id, r_id))
+                                                    await db2.commit()
+                                    except Exception as e:
+                                        log.error(f"Failed to auto-create conversation thread for {r_id}: {e}")
+
                                 if conv_thread_id:
                                     try:
                                         conv_channel = bot.get_channel(conv_thread_id) or await bot.fetch_channel(conv_thread_id)
@@ -1142,7 +1198,7 @@ async def on_message(message: discord.Message):
                                     except discord.HTTPException:
                                         await message.channel.send("I wasn't able to deliver your message to the team right now. Please try again later.")
                                 else:
-                                    # Fallback to secure channel if conv thread is missing
+                                    # Fallback to secure channel if conv thread is STILL missing
                                     if secure_channel_cache:
                                         try:
                                             ref = None
