@@ -55,6 +55,7 @@ MOD_ROLE_ID = int(get_env_var("MOD_ROLE_ID").strip())
 GUILD_ID = int(os.getenv("GUILD_ID", "0").strip())                     
 ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0").strip())     
 FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0").strip())     
+CONVERSATION_FORUM_CHANNEL_ID = int(os.getenv("CONVERSATION_FORUM_CHANNEL_ID", "0").strip())
 
 UPLOAD_SESSION_TIMEOUT = 600        
 UPLOAD_SESSION_HARD_LIMIT = 3600   
@@ -64,7 +65,7 @@ AUDIT_LOG_RETENTION_DAYS = 365
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  
-MAX_EVIDENCE = 25                 
+MAX_EVIDENCE = 25                  
 
 # CONSENT_LAWS Reference Data
 # This dictionary is reference data used to surface potential age-related 
@@ -302,7 +303,7 @@ CRISIS_RESOURCES = [
     {"name": "Sexual Abuse & Exploitation (US)", "value": "**RAINN (Rape/Abuse/Incest):** `1-800-656-HOPE` | [rainn.org](https://www.rainn.org)\n**NCMEC CyberTipline:** [report.cybertipline.org](https://report.cybertipline.org)"},
     {"name": "United Kingdom", "value": "**Childline:** `0800 1111` | [childline.org.uk](https://www.childline.org.uk)\n**NSPCC:** `0808 800 5000` | [nspcc.org.uk](https://www.nspcc.org.uk)\n**Rape Crisis:** `0808 802 9999` | [rapecrisis.org.uk](https://rapecrisis.org.uk)"},
     {"name": "Canada", "value": "**Kids Help Phone:** `1-800-668-6868` | [kidshelpphone.ca](https://kidshelpphone.ca)\n**Canadian Centre for Child Protection:** [protectchildren.ca](https://www.protectchildren.ca)"},
-    {"name": "Australia", "value": "**Kids Helpline:** `1800 55 1800` | [kidshelpline.com.au](https://www.kidshelpline.com.au)\n**Bravehearts:** `1800 272 831` | [bravehearts.org.au](https://bravehearts.org.au)"},
+    {"name": "Australia", "value": "**Kids Helpline:** `1800 55 1800` | [kidshelpline.com.au](https://kidshelpline.com.au)\n**Bravehearts:** `1800 272 831` | [bravehearts.org.au](https://bravehearts.org.au)"},
     {"name": "India", "value": "**Childline India:** `1098` | [childlineindia.org.in](https://www.childlineindia.org.in)\n**Vandrevala Foundation:** `9999 666 555`"},
     {"name": "International Support", "value": "**Befrienders Worldwide:** [befrienders.org](https://www.befrienders.org)\n**Find A Helpline:** [findahelpline.com](https://findahelpline.com)\n**International Association for Suicide Prevention:** [iasp.info](https://www.iasp.info)"},
     {"name": "Removing Explicit Images", "value": "**Take It Down (NCMEC - Under 18):** [takendown.org](https://takendown.org)\n**StopNCII (Adults 18+):** [stopncii.org](https://stopncii.org)"},
@@ -317,6 +318,7 @@ secure_channel_cache = None
 mod_log_channel_cache = None
 issue_channel_cache = None
 forum_channel_cache = None
+conversation_forum_channel_cache = None
 commands_synced = False
 
 async def init_db():
@@ -356,6 +358,10 @@ async def init_db():
         try: await db.execute("ALTER TABLE reports ADD COLUMN victim_sex TEXT")
         except aiosqlite.OperationalError: pass
         try: await db.execute("ALTER TABLE reports ADD COLUMN forum_msg_id INTEGER")
+        except aiosqlite.OperationalError: pass
+        try: await db.execute("ALTER TABLE reports ADD COLUMN conversation_thread_id INTEGER")
+        except aiosqlite.OperationalError: pass
+        try: await db.execute("ALTER TABLE reports ADD COLUMN conversation_msg_id INTEGER")
         except aiosqlite.OperationalError: pass
             
         await db.execute("CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id)")
@@ -455,7 +461,7 @@ class TriageView(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
 
         msg = interaction.message
-        match = re.search(r'PR-\d{8}-[A-F0-9]{4}', msg.content)
+        match = re.search(r'PR-\d{8}-[A-F0-9]{8}', msg.content)
         if not match:
             return await interaction.followup.send("Could not find the Report ID in the message.", ephemeral=True)
         report_id = match.group(0)
@@ -539,7 +545,7 @@ class TriageView(discord.ui.View):
         except Exception as e:
             log.error(f"Error deleting triage image: {e}")
             
-        report_id_match = re.search(r'PR-\d{8}-[A-F0-9]{4}', interaction.message.content)
+        report_id_match = re.search(r'PR-\d{8}-[A-F0-9]{8}', interaction.message.content)
         if report_id_match:
             await log_audit_action(report_id_match.group(0), interaction.user.id, "evidence_rejected")
 
@@ -831,7 +837,7 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
                     base_msg += f" ({consent_notes})"
                 embed.add_field(name="⚠️ LEGAL REVIEW REQUIRED ⚠️", value=base_msg, inline=False)
 
-        global secure_channel_cache
+        global secure_channel_cache, conversation_forum_channel_cache
         if not secure_channel_cache:
             secure_channel_cache = bot.get_channel(SECURE_CHANNEL_ID) or await bot.fetch_channel(SECURE_CHANNEL_ID)
 
@@ -861,6 +867,31 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
                 await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                 await db.commit()
             return await interaction.followup.send("We ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
+
+        # Create Conversation Thread
+        if conversation_forum_channel_cache:
+            try:
+                conv_thread_name = f"{self.online_name.value[:80]} - {report_id}"
+                conv_thread_obj = await conversation_forum_channel_cache.create_thread(name=conv_thread_name)
+                
+                if isinstance(conv_thread_obj, discord.Thread):
+                    conv_thread = conv_thread_obj
+                elif hasattr(conv_thread_obj, 'thread'):
+                    conv_thread = conv_thread_obj.thread
+                else:
+                    conv_thread = conv_thread_obj[0]
+                
+                conversation_thread_id = conv_thread.id
+                
+                reporter_info = "Anonymous" if self.is_anonymous else f"{interaction.user.mention} ({interaction.user.name})"
+                init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{report_id}`"
+                init_msg = await conv_thread.send(init_content)
+                
+                async with aiosqlite.connect("reports.db") as db:
+                    await db.execute("UPDATE reports SET conversation_thread_id=?, conversation_msg_id=? WHERE report_id=?", (conversation_thread_id, init_msg.id, report_id))
+                    await db.commit()
+            except Exception as e:
+                log.error(f"Failed to create conversation thread for {report_id}: {e}")
 
         await log_audit_action(report_id, interaction.user.id, "report_created")
         await interaction.followup.send("Thank you for reaching out. It takes courage to speak up, and your report has been securely received and forwarded to our team.\n\n**Please check your Direct Messages (DMs) from me** to upload any screenshots you have.", ephemeral=True)
@@ -1068,11 +1099,11 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
     await interaction.response.defer(ephemeral=True)
     
     async with aiosqlite.connect("reports.db") as db:
-        async with db.execute("SELECT reporter_id, status, msg_id FROM reports WHERE report_id=?", (report_id,)) as cur:
+        async with db.execute("SELECT reporter_id, status, msg_id, conversation_thread_id FROM reports WHERE report_id=?", (report_id,)) as cur:
             row = await cur.fetchone()
             if not row:
                 return await interaction.followup.send("Report ID not found.", ephemeral=True)
-            reporter_id, status, orig_msg_id = row
+            reporter_id, status, orig_msg_id, conv_thread_id = row
 
     if status in ["Resolved", "False Report"]:
         return await interaction.followup.send("This case is closed. You cannot reply to it.", ephemeral=True)
@@ -1096,14 +1127,23 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
     except discord.Forbidden:
         return await interaction.followup.send("I couldn't reach them. It looks like they have their DMs closed.", ephemeral=True)
 
-    # 2. Send to mod channel (with mod name, rephrased)
-    if secure_channel_cache:
-        mod_msg_content = f"**📤 {interaction.user.mention} ({interaction.user.name}) sent a reply to the reporter for case `{report_id}`:**\n> {message}"
+    # 2. Send to conversation thread (with mod name, rephrased)
+    if conv_thread_id:
         try:
-            ref = discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id) if orig_msg_id else None
-            await secure_channel_cache.send(content=mod_msg_content, reference=ref)
+            conv_channel = bot.get_channel(conv_thread_id) or await bot.fetch_channel(conv_thread_id)
+            mod_msg_content = f"**📤 {interaction.user.mention} ({interaction.user.name}) sent a reply to the reporter for case `{report_id}`:**\n> {message}"
+            await conv_channel.send(content=mod_msg_content)
         except discord.HTTPException as e:
-            log.error(f"Failed to send mod reply copy to secure channel: {e}")
+            log.error(f"Failed to send mod reply copy to conversation thread: {e}")
+    else:
+        # Fallback to secure channel if conv thread is missing for some reason
+        if secure_channel_cache:
+            mod_msg_content = f"**📤 {interaction.user.mention} ({interaction.user.name}) sent a reply to the reporter for case `{report_id}`:**\n> {message}"
+            try:
+                ref = discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id) if orig_msg_id else None
+                await secure_channel_cache.send(content=mod_msg_content, reference=ref)
+            except discord.HTTPException as e:
+                log.error(f"Failed to send mod reply copy to secure channel: {e}")
 
     await log_audit_action(report_id, interaction.user.id, "reporter_contacted")
     await interaction.followup.send("Your message has been sent to them safely.", ephemeral=True)
@@ -1153,10 +1193,10 @@ async def on_message(message: discord.Message):
                     row = await cur.fetchone()
                     if row:
                         r_id = row[0]
-                        async with db.execute("SELECT status, is_anonymous, msg_id FROM reports WHERE report_id=?", (r_id,)) as cur2:
+                        async with db.execute("SELECT status, is_anonymous, msg_id, conversation_thread_id FROM reports WHERE report_id=?", (r_id,)) as cur2:
                             r2 = await cur2.fetchone()
                             if r2:
-                                status, is_anon, orig_msg_id = r2
+                                status, is_anon, orig_msg_id, conv_thread_id = r2
                                 
                                 if status in ["Resolved", "False Report"]:
                                     await message.channel.send("This case is now closed. If you need further help, please submit a new report or use /resources.")
@@ -1165,9 +1205,10 @@ async def on_message(message: discord.Message):
                                 display_name = "Anonymous" if is_anon else message.author.name
                                 content = f"💬 **Reply from {display_name} ({r_id})**:\n{message.content}"
                                 
-                                if secure_channel_cache:
+                                if conv_thread_id:
                                     try:
-                                        await secure_channel_cache.send(content=content, reference=discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id))
+                                        conv_channel = bot.get_channel(conv_thread_id) or await bot.fetch_channel(conv_thread_id)
+                                        await conv_channel.send(content=content)
                                         try:
                                             await message.add_reaction("✅")
                                         except Exception:
@@ -1204,7 +1245,7 @@ async def on_message(message: discord.Message):
                                                     
                                                     file = discord.File(io.BytesIO(image_bytes), filename=att.filename)
                                                     await secure_channel_cache.send(
-                                                        content=f"⚠️ **PENDING TRIAGE: {r_id}**\n*Review image. If safe, click Approve. If illegal, click Delete.*",
+                                                        content=f"⚠️ **PENDING TRIAGE: {r_id}** (Reply Attachment)\n*Review image. If safe, click Approve. If illegal, click Delete.*",
                                                         file=file,
                                                         view=TriageView()
                                                     )
@@ -1212,6 +1253,55 @@ async def on_message(message: discord.Message):
                                                     await message.channel.send(f"I ran into an issue uploading `{att.filename}`. Please try sending it again.")
                                     except discord.HTTPException:
                                         await message.channel.send("I wasn't able to deliver your message to the team right now. Please try again later.")
+                                else:
+                                    # Fallback to secure channel if conv thread is missing
+                                    if secure_channel_cache:
+                                        try:
+                                            await secure_channel_cache.send(content=content, reference=discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id))
+                                            try:
+                                                await message.add_reaction("✅")
+                                            except Exception:
+                                                pass
+                                            
+                                            if message.attachments:
+                                                for att in message.attachments[:10]:
+                                                    ext = os.path.splitext(att.filename)[1].lower()
+                                                    if ext not in ALLOWED_EXTENSIONS or (att.content_type and not att.content_type.startswith('image/')):
+                                                        await message.channel.send(f"I'm sorry, but for safety reasons, we can only accept image files (like .png or .jpg). `{att.filename}` was rejected.")
+                                                        continue
+                                                    if att.size > MAX_FILE_SIZE:
+                                                        await message.channel.send(f"I'm sorry, but `{att.filename}` is too large. Please keep images under 10MB.")
+                                                        continue
+                                                    
+                                                    try:
+                                                        image_bytes = await att.read()
+                                                        scanning_msg = await message.channel.send("🔍 Scanning image for explicit content...")
+                                                        is_explicit = await is_explicit_image(image_bytes)
+                                                        try:
+                                                            await scanning_msg.delete()
+                                                        except Exception:
+                                                            pass
+
+                                                        if is_explicit:
+                                                            await message.channel.send(
+                                                                f"🚫 **UPLOAD BLOCKED**: `{att.filename}` was flagged by our AI as containing explicit nudity.\n\n"
+                                                                f"**DISCLAIMER:** Please **DO NOT** upload explicit nudity or CSAM. If you are a victim of exploitation, please contact local authorities or use `/resources`. "
+                                                                f"Only upload screenshots of text conversations."
+                                                            )
+                                                            if r_id:
+                                                                await log_audit_action(r_id, message.author.id, "evidence_rejected_explicit_reply")
+                                                            continue
+                                                        
+                                                        file = discord.File(io.BytesIO(image_bytes), filename=att.filename)
+                                                        await secure_channel_cache.send(
+                                                            content=f"⚠️ **PENDING TRIAGE: {r_id}**\n*Review image. If safe, click Approve. If illegal, click Delete.*",
+                                                            file=file,
+                                                            view=TriageView()
+                                                        )
+                                                    except (discord.HTTPException, discord.Forbidden, discord.NotFound):
+                                                        await message.channel.send(f"I ran into an issue uploading `{att.filename}`. Please try sending it again.")
+                                        except discord.HTTPException:
+                                            await message.channel.send("I wasn't able to deliver your message to the team right now. Please try again later.")
                                 return
 
         session = None
@@ -1230,7 +1320,7 @@ async def on_message(message: discord.Message):
             
             if case_status in ["Resolved", "False Report"]:
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                     await db.commit()
                 await message.channel.send("This case has been closed by the moderation team. You can no longer upload evidence for it. If you need to submit a new report, please use `/report`.")
                 return
@@ -1372,7 +1462,7 @@ async def on_ready():
     bot.add_view(TriageView())
     bot.add_view(IssueView()) 
     
-    global secure_channel_cache, mod_log_channel_cache, issue_channel_cache, forum_channel_cache, commands_synced
+    global secure_channel_cache, mod_log_channel_cache, issue_channel_cache, forum_channel_cache, conversation_forum_channel_cache, commands_synced
     
     try:
         secure_channel_cache = bot.get_channel(SECURE_CHANNEL_ID) or await bot.fetch_channel(SECURE_CHANNEL_ID)
@@ -1399,6 +1489,12 @@ async def on_ready():
             forum_channel_cache = bot.get_channel(FORUM_CHANNEL_ID) or await bot.fetch_channel(FORUM_CHANNEL_ID)
         except discord.NotFound:
             log.error("ERROR: FORUM_CHANNEL_ID not found!")
+
+    if CONVERSATION_FORUM_CHANNEL_ID != 0:
+        try:
+            conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+        except discord.NotFound:
+            log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found!")
     
     if not cleanup_db.is_running():
         cleanup_db.start()
