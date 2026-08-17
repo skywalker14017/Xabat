@@ -68,17 +68,10 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_EVIDENCE = 25                  
 
 # CONSENT_LAWS Reference Data
-# This dictionary is reference data used to surface potential age-related 
-# concerns for moderator review. It is NOT a complete legal database, does 
-# NOT constitute legal advice, and does NOT independently determine whether 
-# conduct is legal or illegal. Moderators must treat the resulting flag as a 
-# review signal, not a definitive legal conclusion.
-
 def _gn(age, notes=""):
     """Helper for gender-neutral jurisdictions."""
     return {"male": age, "female": age, "jurisdiction_specific": False, "notes": notes}
 
-# Pre-defined objects for sex-specific or jurisdiction-specific countries
 _china = {"male": None, "female": 14, "jurisdiction_specific": False, "notes": "Statutory provision specifically concerns intercourse involving a girl below 14."}
 _srilanka = {"male": None, "female": 16, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific and the legal framework concerning boys is different."}
 _malaysia = {"male": None, "female": 16, "jurisdiction_specific": False, "notes": "Statutory provision is sex-specific and applies to girls."}
@@ -97,204 +90,84 @@ _mexico = {"male": None, "female": None, "jurisdiction_specific": True, "notes":
 _none_multi = {"male": None, "female": None, "jurisdiction_specific": False, "notes": "Multiple statutory thresholds exist; no single numeric value assigned."}
 
 CONSENT_LAWS = {
-    "afghanistan": _gn(18), "af": _gn(18),
-    "albania": _gn(18), "al": _gn(18),
-    "algeria": _gn(16), "dz": _gn(16),
-    "andorra": _gn(18), "ad": _gn(18),
-    "angola": _gn(14), "ao": _gn(14),
-    "antiguaandbarbuda": _gn(16), "antigua": _gn(16), "ag": _gn(16),
-    "argentina": _gn(13), "ar": _gn(13),
-    "armenia": _gn(16), "am": _gn(16),
+    "afghanistan": _gn(18), "af": _gn(18), "albania": _gn(18), "al": _gn(18),
+    "algeria": _gn(16), "dz": _gn(16), "andorra": _gn(18), "ad": _gn(18),
+    "angola": _gn(14), "ao": _gn(14), "antiguaandbarbuda": _gn(16), "antigua": _gn(16), "ag": _gn(16),
+    "argentina": _gn(13), "ar": _gn(13), "armenia": _gn(16), "am": _gn(16),
     "australia": _australia, "aus": _australia, "oz": _australia, "au": _australia,
-    "austria": _gn(18), "at": _gn(18),
-    "azerbaijan": _gn(16), "az": _gn(16),
-    "bahamas": _gn(18), "bs": _gn(18),
-    "bahrain": _gn(21), "bh": _gn(21),
-    "bangladesh": _gn(14), "bd": _gn(14),
-    "barbados": _gn(16), "bb": _gn(16),
-    "belarus": _gn(16), "by": _gn(16),
-    "belgium": _gn(18), "be": _gn(18),
-    "belize": _gn(16), "bz": _gn(16),
-    "benin": _benin, "bj": _benin,
-    "bhutan": _gn(18), "bt": _gn(18),
-    "bolivia": _gn(18), "bo": _gn(18),
+    "austria": _gn(18), "at": _gn(18), "azerbaijan": _gn(16), "az": _gn(16),
+    "bahamas": _gn(18), "bs": _gn(18), "bahrain": _gn(21), "bh": _gn(21),
+    "bangladesh": _gn(14), "bd": _gn(14), "barbados": _gn(16), "bb": _gn(16),
+    "belarus": _gn(16), "by": _gn(16), "belgium": _gn(18), "be": _gn(18),
+    "belize": _gn(16), "bz": _gn(16), "benin": _benin, "bj": _benin,
+    "bhutan": _gn(18), "bt": _gn(18), "bolivia": _gn(18), "bo": _gn(18),
     "bosniaandherzegovina": _gn(18), "bosnia": _gn(18), "bih": _gn(18),
-    "botswana": _gn(18), "bw": _gn(18),
-    "brazil": _gn(14), "brasil": _gn(14), "br": _gn(14),
-    "brunei": _gn(16), "bn": _gn(16),
-    "bulgaria": _gn(14), "bg": _gn(14),
-    "burkinafaso": _gn(18), "bf": _gn(18),
-    "burundi": _gn(18), "bi": _gn(18),
-    "caboverde": _gn(16), "capeverde": _gn(16), "cv": _gn(16),
-    "cambodia": _gn(15), "kh": _gn(15),
-    "cameroon": _gn(21), "cm": _gn(21),
-    "canada": _gn(18), "ca": _gn(18),
-    "centralafricanrepublic": _gn(18), "car": _gn(18), "cf": _gn(18),
-    "chad": _gn(16), "td": _gn(16),
-    "chile": _gn(18), "cl": _gn(18),
-    "china": _china, "prc": _china, "peoplerepublicofchina": _china, "cn": _china,
-    "colombia": _gn(14), "co": _gn(14),
-    "comoros": _gn(15), "km": _gn(15),
-    "congo": _gn(18), "republicofthecongo": _gn(18), "cg": _gn(18),
-    "costarica": _gn(18), "cr": _gn(18),
-    "croatia": _gn(15), "hr": _gn(15),
-    "cuba": _gn(16), "cu": _gn(16),
-    "cyprus": _gn(17), "cy": _gn(17),
-    "czechia": _gn(15), "czechrepublic": _gn(15), "cz": _gn(15),
-    "denmark": _gn(15), "dk": _gn(15),
-    "djibouti": _gn(18), "dj": _gn(18),
-    "dominica": _gn(16), "dm": _gn(16),
-    "dominicanrepublic": _gn(18), "dr": _gn(18), "do": _gn(18),
-    "ecuador": _gn(14), "ec": _gn(14),
-    "egypt": _gn(18), "eg": _gn(18),
-    "elsalvador": _gn(15), "sv": _gn(15),
-    "equatorialguinea": _gn(18), "gq": _gn(18),
-    "eritrea": _gn(18), "er": _gn(18),
-    "estonia": _gn(18), "ee": _gn(18),
-    "eswatini": _gn(18), "swaziland": _gn(18), "sz": _gn(18),
-    "ethiopia": _gn(18), "et": _gn(18),
-    "fiji": _gn(16), "fj": _gn(16),
-    "finland": _gn(18), "fi": _gn(18),
-    "france": _gn(15), "fr": _gn(15),
-    "gabon": _gn(21), "ga": _gn(21),
-    "gambia": _gn(18), "gm": _gn(18),
-    "georgia": _gn(16), "ge": _gn(16),
-    "germany": _gn(18), "de": _gn(18),
-    "ghana": _gn(16), "gh": _gn(16),
-    "greece": _gn(18), "gr": _gn(18),
-    "grenada": _gn(16), "gd": _gn(16),
-    "guatemala": _gn(18), "gt": _gn(18),
-    "guinea": _gn(15), "gn": _gn(15),
-    "guineabissau": _guineabissau, "gw": _guineabissau,
-    "guyana": _gn(16), "gy": _gn(16),
-    "haiti": _gn(15), "ht": _gn(15),
-    "honduras": _gn(18), "hn": _gn(18),
-    "hongkong": _gn(21), "hk": _gn(21),
-    "hungary": _gn(18), "hu": _gn(18),
-    "iceland": _gn(18), "is": _gn(18),
-    "india": _gn(18), "in": _gn(18),
-    "indonesia": _gn(18), "id": _gn(18),
-    "iran": _gn(18), "ir": _gn(18),
-    "iraq": _gn(18), "iq": _gn(18),
-    "ireland": _gn(17), "ie": _gn(17),
-    "israel": _gn(16), "il": _gn(16),
-    "italy": _gn(16), "it": _gn(16),
-    "jamaica": _gn(16), "jm": _gn(16),
-    "japan": _gn(18), "jp": _gn(18),
-    "jordan": _jordan, "jo": _jordan,
-    "kazakhstan": _gn(16), "kz": _gn(16),
-    "kenya": _gn(18), "ke": _gn(18),
-    "kiribati": _gn(15), "ki": _gn(15),
-    "kuwait": _kuwait, "kw": _kuwait,
-    "kyrgyzstan": _gn(16), "kg": _gn(16),
-    "laos": _gn(15), "la": _gn(15),
-    "latvia": _gn(16), "lv": _gn(16),
-    "lebanon": _gn(18), "lb": _gn(18),
-    "lesotho": _gn(18), "ls": _gn(18),
-    "liberia": _gn(18), "lr": _gn(18),
-    "libya": _gn(18), "ly": _gn(18),
-    "liechtenstein": _gn(18), "li": _gn(18),
-    "lithuania": _gn(18), "lt": _gn(18),
-    "luxembourg": _gn(16), "lu": _gn(16),
-    "macau": _gn(14), "mo": _gn(14),
-    "madagascar": _none_multi, "mg": _none_multi,
-    "malawi": _gn(16), "mw": _gn(16),
-    "malaysia": _malaysia, "my": _malaysia,
-    "maldives": _gn(18), "mv": _gn(18),
-    "mali": _gn(15), "ml": _gn(15),
-    "malta": _gn(16), "mt": _gn(16),
-    "marshallislands": _gn(16), "mh": _gn(16),
-    "mauritania": _gn(18), "mr": _gn(18),
-    "mauritius": _gn(16), "mu": _gn(16),
-    "mexico": _mexico, "mx": _mexico,
-    "micronesia": _gn(16), "fm": _gn(16),
-    "moldova": _gn(16), "md": _gn(16),
-    "monaco": _gn(15), "mc": _gn(15),
-    "mongolia": _gn(16), "mn": _gn(16),
-    "montenegro": _gn(18), "me": _gn(18),
-    "morocco": _gn(18), "ma": _gn(18),
-    "mozambique": _gn(18), "mz": _gn(18),
-    "myanmar": _gn(16), "burma": _gn(16), "mm": _gn(16),
-    "namibia": _gn(16), "na": _gn(16),
-    "nauru": _gn(17), "nr": _gn(17),
-    "nepal": _gn(18), "np": _gn(18),
-    "netherlands": _gn(18), "nl": _gn(18),
-    "newzealand": _gn(16), "nz": _gn(16),
-    "nicaragua": _gn(18), "ni": _gn(18),
-    "niger": _none_multi, "ne": _none_multi,
-    "nigeria": _gn(18), "ng": _gn(18),
-    "northkorea": _gn(15), "dprk": _gn(15), "kp": _gn(15),
-    "northmacedonia": _gn(18), "macedonia": _gn(18), "mk": _gn(18),
-    "norway": _gn(16), "no": _gn(16),
-    "oman": _gn(18), "om": _gn(18),
-    "pakistan": _gn(18), "pk": _gn(18),
-    "palau": _gn(16), "pw": _gn(16),
-    "palestine": _gn(18), "stateofpalestine": _gn(18), "ps": _gn(18),
-    "panama": _gn(18), "pa": _gn(18),
-    "papuanewguinea": _none_multi, "pg": _none_multi,
-    "paraguay": _gn(16), "py": _gn(16),
-    "peru": _gn(18), "pe": _gn(18),
-    "philippines": _gn(18), "ph": _gn(18),
-    "poland": _gn(18), "pl": _gn(18),
-    "portugal": _gn(14), "pt": _gn(14),
-    "qatar": _gn(18), "qa": _gn(18),
-    "romania": _gn(18), "ro": _gn(18),
-    "russia": _gn(16), "russianfederation": _gn(16), "ru": _gn(16),
-    "rwanda": _gn(18), "rw": _gn(18),
-    "saintkittsandnevis": _gn(16), "saintkitts": _gn(16), "kn": _gn(16),
-    "saintlucia": _gn(16), "lc": _gn(16),
-    "saintvincentandthegrenadines": _saintvincent, "saintvincent": _saintvincent, "vc": _saintvincent,
-    "samoa": _gn(16), "ws": _gn(16),
-    "sanmarino": _gn(18), "sm": _gn(18),
-    "saotomeandprincipe": _gn(16), "saotome": _gn(16), "st": _gn(16),
-    "saudiarabia": _gn(18), "saudi": _gn(18), "ksa": _gn(18), "sa": _gn(18),
-    "senegal": _gn(16), "sn": _gn(16),
-    "serbia": _gn(18), "rs": _gn(18),
-    "seychelles": _gn(15), "sc": _gn(15),
-    "sierraleone": _gn(18), "sl": _gn(18),
-    "singapore": _gn(18), "sg": _gn(18),
-    "slovakia": _gn(15), "sk": _gn(15),
-    "slovenia": _gn(15), "si": _gn(15),
-    "solomonislands": _solomonislands, "sb": _solomonislands,
-    "somalia": _gn(18), "so": _gn(18),
-    "southafrica": _gn(16), "za": _gn(16),
-    "southkorea": _gn(16), "korea": _gn(16), "republicofkorea": _gn(16), "kr": _gn(16),
-    "southsudan": _gn(18), "ss": _gn(18),
-    "spain": _gn(18), "es": _gn(18),
-    "srilanka": _srilanka, "sri": _srilanka, "lk": _srilanka,
-    "sudan": _gn(13), "sd": _gn(13),
-    "suriname": _gn(16), "sr": _gn(16),
-    "sweden": _gn(18), "se": _gn(18),
-    "switzerland": _gn(16), "ch": _gn(16),
-    "syria": _gn(15), "sy": _gn(15),
-    "taiwan": _gn(16), "tw": _gn(16),
-    "tajikistan": _gn(16), "tj": _gn(16),
-    "tanzania": _tanzania, "tz": _tanzania,
-    "thailand": _gn(15), "th": _gn(15),
-    "timorleste": _gn(14), "easttimor": _gn(14), "tl": _gn(14),
-    "togo": _gn(15), "tg": _gn(15),
-    "tonga": _gn(16), "to": _gn(16),
-    "trinidadandtobago": _gn(18), "trinidad": _gn(18), "tt": _gn(18),
-    "tunisia": _gn(18), "tn": _gn(18),
-    "turkey": _gn(18), "turkiye": _gn(18), "tr": _gn(18),
-    "turkmenistan": _gn(16), "tm": _gn(16),
-    "tuvalu": _tuvalu, "tv": _tuvalu,
-    "uganda": _gn(18), "ug": _gn(18),
-    "ukraine": _gn(16), "ua": _gn(16),
-    "uae": _gn(18), "unitedarabemirates": _gn(18), "ae": _gn(18),
-    "uk": _gn(18), "unitedkingdom": _gn(18), "britain": _gn(18),
-    "england": _gn(18), "scotland": _gn(18), "wales": _gn(18),
-    "greatbritain": _gn(18), "gb": _gn(18),
-    "usa": _usa, "us": _usa, "unitedstates": _usa,
-    "unitedstatesofamerica": _usa, "america": _usa,
-    "uruguay": _gn(18), "uy": _gn(18),
-    "uzbekistan": _gn(16), "uz": _gn(16),
-    "vanuatu": _gn(18), "vu": _gn(18),
-    "vaticancity": _gn(18), "vatican": _gn(18), "va": _gn(18),
-    "venezuela": _gn(16), "ve": _gn(16),
-    "vietnam": _gn(16), "vn": _gn(16),
-    "yemen": _gn(9), "ye": _gn(9),
-    "zambia": _gn(16), "zm": _gn(16),
+    "botswana": _gn(18), "bw": _gn(18), "brazil": _gn(14), "brasil": _gn(14), "br": _gn(14),
+    "brunei": _gn(16), "bn": _gn(16), "bulgaria": _gn(14), "bg": _gn(14),
+    "burkinafaso": _gn(18), "bf": _gn(18), "burundi": _gn(18), "bi": _gn(18),
+    "caboverde": _gn(16), "capeverde": _gn(16), "cv": _gn(16), "cambodia": _gn(15), "kh": _gn(15),
+    "cameroon": _gn(21), "cm": _gn(21), "canada": _gn(18), "ca": _gn(18),
+    "centralafricanrepublic": _gn(18), "car": _gn(18), "cf": _gn(18), "chad": _gn(16), "td": _gn(16),
+    "chile": _gn(18), "cl": _gn(18), "china": _china, "prc": _china, "peoplerepublicofchina": _china, "cn": _china,
+    "colombia": _gn(14), "co": _gn(14), "comoros": _gn(15), "km": _gn(15),
+    "congo": _gn(18), "republicofthecongo": _gn(18), "cg": _gn(18), "costarica": _gn(18), "cr": _gn(18),
+    "croatia": _gn(15), "hr": _gn(15), "cuba": _gn(16), "cu": _gn(16), "cyprus": _gn(17), "cy": _gn(17),
+    "czechia": _gn(15), "czechrepublic": _gn(15), "cz": _gn(15), "denmark": _gn(15), "dk": _gn(15),
+    "djibouti": _gn(18), "dj": _gn(18), "dominica": _gn(16), "dm": _gn(16),
+    "dominicanrepublic": _gn(18), "dr": _gn(18), "do": _gn(18), "ecuador": _gn(14), "ec": _gn(14),
+    "egypt": _gn(18), "eg": _gn(18), "elsalvador": _gn(15), "sv": _gn(15), "equatorialguinea": _gn(18), "gq": _gn(18),
+    "eritrea": _gn(18), "er": _gn(18), "estonia": _gn(18), "ee": _gn(18), "eswatini": _gn(18), "swaziland": _gn(18), "sz": _gn(18),
+    "ethiopia": _gn(18), "et": _gn(18), "fiji": _gn(16), "fj": _gn(16), "finland": _gn(18), "fi": _gn(18),
+    "france": _gn(15), "fr": _gn(15), "gabon": _gn(21), "ga": _gn(21), "gambia": _gn(18), "gm": _gn(18),
+    "georgia": _gn(16), "ge": _gn(16), "germany": _gn(18), "de": _gn(18), "ghana": _gn(16), "gh": _gn(16),
+    "greece": _gn(18), "gr": _gn(18), "grenada": _gn(16), "gd": _gn(16), "guatemala": _gn(18), "gt": _gn(18),
+    "guinea": _gn(15), "gn": _gn(15), "guineabissau": _guineabissau, "gw": _guineabissau, "guyana": _gn(16), "gy": _gn(16),
+    "haiti": _gn(15), "ht": _gn(15), "honduras": _gn(18), "hn": _gn(18), "hongkong": _gn(21), "hk": _gn(21),
+    "hungary": _gn(18), "hu": _gn(18), "iceland": _gn(18), "is": _gn(18), "india": _gn(18), "in": _gn(18),
+    "indonesia": _gn(18), "id": _gn(18), "iran": _gn(18), "ir": _gn(18), "iraq": _gn(18), "iq": _gn(18),
+    "ireland": _gn(17), "ie": _gn(17), "israel": _gn(16), "il": _gn(16), "italy": _gn(16), "it": _gn(16),
+    "jamaica": _gn(16), "jm": _gn(16), "japan": _gn(18), "jp": _gn(18), "jordan": _jordan, "jo": _jordan,
+    "kazakhstan": _gn(16), "kz": _gn(16), "kenya": _gn(18), "ke": _gn(18), "kiribati": _gn(15), "ki": _gn(15),
+    "kuwait": _kuwait, "kw": _kuwait, "kyrgyzstan": _gn(16), "kg": _gn(16), "laos": _gn(15), "la": _gn(15),
+    "latvia": _gn(16), "lv": _gn(16), "lebanon": _gn(18), "lb": _gn(18), "lesotho": _gn(18), "ls": _gn(18),
+    "liberia": _gn(18), "lr": _gn(18), "libya": _gn(18), "ly": _gn(18), "liechtenstein": _gn(18), "li": _gn(18),
+    "lithuania": _gn(18), "lt": _gn(18), "luxembourg": _gn(16), "lu": _gn(16), "macau": _gn(14), "mo": _gn(14),
+    "madagascar": _none_multi, "mg": _none_multi, "malawi": _gn(16), "mw": _gn(16), "malaysia": _malaysia, "my": _malaysia,
+    "maldives": _gn(18), "mv": _gn(18), "mali": _gn(15), "ml": _gn(15), "malta": _gn(16), "mt": _gn(16),
+    "marshallislands": _gn(16), "mh": _gn(16), "mauritania": _gn(18), "mr": _gn(18), "mauritius": _gn(16), "mu": _gn(16),
+    "mexico": _mexico, "mx": _mexico, "micronesia": _gn(16), "fm": _gn(16), "moldova": _gn(16), "md": _gn(16),
+    "monaco": _gn(15), "mc": _gn(15), "mongolia": _gn(16), "mn": _gn(16), "montenegro": _gn(18), "me": _gn(18),
+    "morocco": _gn(18), "ma": _gn(18), "mozambique": _gn(18), "mz": _gn(18), "myanmar": _gn(16), "burma": _gn(16), "mm": _gn(16),
+    "namibia": _gn(16), "na": _gn(16), "nauru": _gn(17), "nr": _gn(17), "nepal": _gn(18), "np": _gn(18),
+    "netherlands": _gn(18), "nl": _gn(18), "newzealand": _gn(16), "nz": _gn(16), "nicaragua": _gn(18), "ni": _gn(18),
+    "niger": _none_multi, "ne": _none_multi, "nigeria": _gn(18), "ng": _gn(18), "northkorea": _gn(15), "dprk": _gn(15), "kp": _gn(15),
+    "northmacedonia": _gn(18), "macedonia": _gn(18), "mk": _gn(18), "norway": _gn(16), "no": _gn(16), "oman": _gn(18), "om": _gn(18),
+    "pakistan": _gn(18), "pk": _gn(18), "palau": _gn(16), "pw": _gn(16), "palestine": _gn(18), "stateofpalestine": _gn(18), "ps": _gn(18),
+    "panama": _gn(18), "pa": _gn(18), "papuanewguinea": _none_multi, "pg": _none_multi, "paraguay": _gn(16), "py": _gn(16),
+    "peru": _gn(18), "pe": _gn(18), "philippines": _gn(18), "ph": _gn(18), "poland": _gn(18), "pl": _gn(18),
+    "portugal": _gn(14), "pt": _gn(14), "qatar": _gn(18), "qa": _gn(18), "romania": _gn(18), "ro": _gn(18),
+    "russia": _gn(16), "russianfederation": _gn(16), "ru": _gn(16), "rwanda": _gn(18), "rw": _gn(18),
+    "saintkittsandnevis": _gn(16), "saintkitts": _gn(16), "kn": _gn(16), "saintlucia": _gn(16), "lc": _gn(16),
+    "saintvincentandthegrenadines": _saintvincent, "saintvincent": _saintvincent, "vc": _saintvincent, "samoa": _gn(16), "ws": _gn(16),
+    "sanmarino": _gn(18), "sm": _gn(18), "saotomeandprincipe": _gn(16), "saotome": _gn(16), "st": _gn(16),
+    "saudiarabia": _gn(18), "saudi": _gn(18), "ksa": _gn(18), "sa": _gn(18), "senegal": _gn(16), "sn": _gn(16),
+    "serbia": _gn(18), "rs": _gn(18), "seychelles": _gn(15), "sc": _gn(15), "sierraleone": _gn(18), "sl": _gn(18),
+    "singapore": _gn(18), "sg": _gn(18), "slovakia": _gn(15), "sk": _gn(15), "slovenia": _gn(15), "si": _gn(15),
+    "solomonislands": _solomonislands, "sb": _solomonislands, "somalia": _gn(18), "so": _gn(18), "southafrica": _gn(16), "za": _gn(16),
+    "southkorea": _gn(16), "korea": _gn(16), "republicofkorea": _gn(16), "kr": _gn(16), "southsudan": _gn(18), "ss": _gn(18),
+    "spain": _gn(18), "es": _gn(18), "srilanka": _srilanka, "sri": _srilanka, "lk": _srilanka, "sudan": _gn(13), "sd": _gn(13),
+    "suriname": _gn(16), "sr": _gn(16), "sweden": _gn(18), "se": _gn(18), "switzerland": _gn(16), "ch": _gn(16),
+    "syria": _gn(15), "sy": _gn(15), "taiwan": _gn(16), "tw": _gn(16), "tajikistan": _gn(16), "tj": _gn(16),
+    "tanzania": _tanzania, "tz": _tanzania, "thailand": _gn(15), "th": _gn(15), "timorleste": _gn(14), "easttimor": _gn(14), "tl": _gn(14),
+    "togo": _gn(15), "tg": _gn(15), "tonga": _gn(16), "to": _gn(16), "trinidadandtobago": _gn(18), "trinidad": _gn(18), "tt": _gn(18),
+    "tunisia": _gn(18), "tn": _gn(18), "turkey": _gn(18), "turkiye": _gn(18), "tr": _gn(18), "turkmenistan": _gn(16), "tm": _gn(16),
+    "tuvalu": _tuvalu, "tv": _tuvalu, "uganda": _gn(18), "ug": _gn(18), "ukraine": _gn(16), "ua": _gn(16),
+    "uae": _gn(18), "unitedarabemirates": _gn(18), "ae": _gn(18), "uk": _gn(18), "unitedkingdom": _gn(18), "britain": _gn(18),
+    "england": _gn(18), "scotland": _gn(18), "wales": _gn(18), "greatbritain": _gn(18), "gb": _gn(18),
+    "usa": _usa, "us": _usa, "unitedstates": _usa, "unitedstatesofamerica": _usa, "america": _usa,
+    "uruguay": _gn(18), "uy": _gn(18), "uzbekistan": _gn(16), "uz": _gn(16), "vanuatu": _gn(18), "vu": _gn(18),
+    "vaticancity": _gn(18), "vatican": _gn(18), "va": _gn(18), "venezuela": _gn(16), "ve": _gn(16),
+    "vietnam": _gn(16), "vn": _gn(16), "yemen": _gn(9), "ye": _gn(9), "zambia": _gn(16), "zm": _gn(16),
     "zimbabwe": _gn(16), "zw": _gn(16)
 }
 
@@ -575,6 +448,15 @@ class ModActionView(discord.ui.View):
 
         await interaction.response.defer(ephemeral=True)
 
+        global forum_channel_cache
+        if not forum_channel_cache and FORUM_CHANNEL_ID != 0:
+            try:
+                forum_channel_cache = bot.get_channel(FORUM_CHANNEL_ID) or await bot.fetch_channel(FORUM_CHANNEL_ID)
+            except discord.NotFound:
+                log.error("ERROR: FORUM_CHANNEL_ID not found during status update!")
+            except discord.Forbidden:
+                log.error("ERROR: Bot lacks permissions to view FORUM_CHANNEL_ID.")
+
         # Fetch reporter_id to send them a DM
         async with aiosqlite.connect("reports.db") as db:
             async with db.execute("SELECT status, thread_id, reported_handle, msg_id, forum_thread_id, reporter_id FROM reports WHERE report_id=?", (report_id,)) as cur:
@@ -627,20 +509,12 @@ class ModActionView(discord.ui.View):
         
         if not forum_thread_id and forum_channel_cache:
             try:
-                forum_thread_obj = await forum_channel_cache.create_thread(name=thread_name, embed=embed)
-                if isinstance(forum_thread_obj, discord.Thread):
-                    forum_thread = forum_thread_obj
-                elif hasattr(forum_thread_obj, 'thread'):
-                    forum_thread = forum_thread_obj.thread
-                else:
-                    forum_thread = forum_thread_obj[0]
+                forum_thread = await forum_channel_cache.create_thread(name=thread_name, embed=embed)
+                if isinstance(forum_thread, tuple):
+                    forum_thread = forum_thread[0]
                 
                 forum_thread_id = forum_thread.id
-                
-                if hasattr(forum_thread_obj, 'message') and forum_thread_obj.message:
-                    forum_msg_id = forum_thread_obj.message.id
-                else:
-                    forum_msg_id = None 
+                forum_msg_id = forum_thread.id  # Discord API: starter message ID is the same as thread ID
                 
                 async with aiosqlite.connect("reports.db") as db:
                     await db.execute("UPDATE reports SET forum_thread_id=?, forum_msg_id=? WHERE report_id=?", (forum_thread_id, forum_msg_id, report_id))
@@ -841,6 +715,14 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
         if not secure_channel_cache:
             secure_channel_cache = bot.get_channel(SECURE_CHANNEL_ID) or await bot.fetch_channel(SECURE_CHANNEL_ID)
 
+        if not conversation_forum_channel_cache and CONVERSATION_FORUM_CHANNEL_ID != 0:
+            try:
+                conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+            except discord.NotFound:
+                log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found during report creation!")
+            except discord.Forbidden:
+                log.error("ERROR: Bot lacks permissions to view CONVERSATION_FORUM_CHANNEL_ID.")
+
         async with aiosqlite.connect("reports.db") as db:
             try:
                 await db.execute("PRAGMA foreign_keys = ON")
@@ -868,30 +750,34 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
                 await db.commit()
             return await interaction.followup.send("We ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
 
-        # Create Conversation Thread
+        # Create Conversation Thread dynamically if cache exists or was just fetched
         if conversation_forum_channel_cache:
             try:
                 conv_thread_name = f"{self.online_name.value[:80]} - {report_id}"
-                conv_thread_obj = await conversation_forum_channel_cache.create_thread(name=conv_thread_name)
+                reporter_info = "Anonymous" if self.is_anonymous else f"{interaction.user.mention} ({interaction.user.name})"
+                init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{report_id}`"
                 
-                if isinstance(conv_thread_obj, discord.Thread):
-                    conv_thread = conv_thread_obj
-                elif hasattr(conv_thread_obj, 'thread'):
-                    conv_thread = conv_thread_obj.thread
-                else:
-                    conv_thread = conv_thread_obj[0]
+                # Discord API requires a starting message when creating a forum thread
+                conv_thread = await conversation_forum_channel_cache.create_thread(name=conv_thread_name, content=init_content)
+                
+                if isinstance(conv_thread, tuple):
+                    conv_thread = conv_thread[0]
                 
                 conversation_thread_id = conv_thread.id
                 
-                reporter_info = "Anonymous" if self.is_anonymous else f"{interaction.user.mention} ({interaction.user.name})"
-                init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{report_id}`"
-                init_msg = await conv_thread.send(init_content)
+                # Fetch the initial message to save its ID
+                init_msg = await conv_thread.fetch_message(conv_thread.id)
                 
                 async with aiosqlite.connect("reports.db") as db:
                     await db.execute("UPDATE reports SET conversation_thread_id=?, conversation_msg_id=? WHERE report_id=?", (conversation_thread_id, init_msg.id, report_id))
                     await db.commit()
             except Exception as e:
                 log.error(f"Failed to create conversation thread for {report_id}: {e}")
+        else:
+            if CONVERSATION_FORUM_CHANNEL_ID == 0:
+                log.error("CONVERSATION_FORUM_CHANNEL_ID is 0 or missing from .env. Replies will fall back to secure channel.")
+            else:
+                log.error("Conversation Forum Channel cache is None. Check bot permissions.")
 
         await log_audit_action(report_id, interaction.user.id, "report_created")
         await interaction.followup.send("Thank you for reaching out. It takes courage to speak up, and your report has been securely received and forwarded to our team.\n\n**Please check your Direct Messages (DMs) from me** to upload any screenshots you have.", ephemeral=True)
@@ -1140,7 +1026,9 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
         if secure_channel_cache:
             mod_msg_content = f"**📤 {interaction.user.mention} ({interaction.user.name}) sent a reply to the reporter for case `{report_id}`:**\n> {message}"
             try:
-                ref = discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id) if orig_msg_id else None
+                ref = None
+                if orig_msg_id:
+                    ref = discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id)
                 await secure_channel_cache.send(content=mod_msg_content, reference=ref)
             except discord.HTTPException as e:
                 log.error(f"Failed to send mod reply copy to secure channel: {e}")
@@ -1257,7 +1145,10 @@ async def on_message(message: discord.Message):
                                     # Fallback to secure channel if conv thread is missing
                                     if secure_channel_cache:
                                         try:
-                                            await secure_channel_cache.send(content=content, reference=discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id))
+                                            ref = None
+                                            if orig_msg_id:
+                                                ref = discord.MessageReference(message_id=orig_msg_id, channel_id=secure_channel_cache.id)
+                                            await secure_channel_cache.send(content=content, reference=ref)
                                             try:
                                                 await message.add_reaction("✅")
                                             except Exception:
@@ -1327,14 +1218,14 @@ async def on_message(message: discord.Message):
             
             if time.time() - last_activity > UPLOAD_SESSION_TIMEOUT or time.time() - created_timestamp > UPLOAD_SESSION_HARD_LIMIT:
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                     await db.commit()
                 await message.channel.send("Your upload session has expired. If you still need to upload screenshots, please start a new report by using the `/report` command in the server.")
                 return
             
             if message.content.lower().strip() in ['done', 'cancel', 'stop']:
                 async with aiosqlite.connect("reports.db") as db:
-                    await db.execute("DELETE FROM pending_uploads WHERE report_id?", (report_id,))
+                    await db.execute("DELETE FROM pending_uploads WHERE report_id=?", (report_id,))
                     await db.commit()
                 await message.channel.send("Thank you for providing this information. Your evidence has been passed securely to our team. If we need anything else, we will reach out to you here. Please take care.")
                 return
@@ -1489,12 +1380,16 @@ async def on_ready():
             forum_channel_cache = bot.get_channel(FORUM_CHANNEL_ID) or await bot.fetch_channel(FORUM_CHANNEL_ID)
         except discord.NotFound:
             log.error("ERROR: FORUM_CHANNEL_ID not found!")
+        except discord.Forbidden:
+            log.error("ERROR: Bot lacks permissions to view FORUM_CHANNEL_ID.")
 
     if CONVERSATION_FORUM_CHANNEL_ID != 0:
         try:
             conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
         except discord.NotFound:
             log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found!")
+        except discord.Forbidden:
+            log.error("ERROR: Bot lacks permissions to view CONVERSATION_FORUM_CHANNEL_ID.")
     
     if not cleanup_db.is_running():
         cleanup_db.start()
