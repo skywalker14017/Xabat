@@ -55,7 +55,7 @@ MOD_ROLE_ID = int(get_env_var("MOD_ROLE_ID").strip())
 GUILD_ID = int(os.getenv("GUILD_ID", "0").strip())                     
 ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0").strip())     
 FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0").strip())     
-CONVERSATION_FORUM_CHANNEL_ID = int(os.getenv("CONVERSATION_FORUM_CHANNEL_ID", "0").strip())
+REPLIES_CHANNEL_ID = int(os.getenv("REPLIES_CHANNEL_ID", "0").strip())
 
 UPLOAD_SESSION_TIMEOUT = 600        
 UPLOAD_SESSION_HARD_LIMIT = 3600   
@@ -191,7 +191,7 @@ secure_channel_cache = None
 mod_log_channel_cache = None
 issue_channel_cache = None
 forum_channel_cache = None
-conversation_forum_channel_cache = None
+replies_channel_cache = None
 commands_synced = False
 
 async def init_db():
@@ -289,6 +289,29 @@ async def is_explicit_image(image_bytes: bytes) -> bool:
         if temp_path:
             try: os.remove(temp_path)
             except OSError: pass
+
+async def lock_channel_to_admins(channel):
+    """Locks a channel down so only roles with the Administrator permission (and the bot) can see/use it."""
+    guild = getattr(channel, "guild", None)
+    if guild is None:
+        return
+    try:
+        overwrites = dict(channel.overwrites)
+        overwrites[guild.default_role] = discord.PermissionOverwrite(view_channel=False)
+        for role in guild.roles:
+            if role.permissions.administrator:
+                overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+        # Make sure the bot never locks itself out, regardless of its role's permissions
+        overwrites[guild.me] = discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, embed_links=True, attach_files=True,
+            read_message_history=True, create_public_threads=True, send_messages_in_threads=True
+        )
+        await channel.edit(overwrites=overwrites)
+        log.info(f"Locked down #{channel.name} to administrator roles only.")
+    except discord.Forbidden:
+        log.error(f"Bot lacks permission to edit overwrites on #{channel.name} (needs Manage Channel/Manage Permissions).")
+    except Exception as e:
+        log.error(f"Failed to lock down #{channel.name}: {e}")
 
 async def create_evidence_thread(report_id: str, reported_handle: str, report_msg: discord.Message):
     thread_name = f"{report_id} - {reported_handle[:40]}" if reported_handle else report_id
@@ -506,8 +529,22 @@ class ModActionView(discord.ui.View):
             log.warning(f"Failed to edit message for {report_id}: Message not found.")
 
         thread_name = reported_handle[:90] if reported_handle else report_id
-        
-        if not forum_thread_id and forum_channel_cache:
+
+        if status == "False Report":
+            # Nuke the suspect brainstorm post entirely rather than leaving a closed record
+            if forum_thread_id:
+                try:
+                    forum_thread = bot.get_channel(forum_thread_id) or await bot.fetch_channel(forum_thread_id)
+                    await forum_thread.delete()
+                except discord.NotFound:
+                    pass
+                except Exception as e:
+                    log.error(f"Failed to delete forum post for {report_id}: {e}")
+                async with aiosqlite.connect("reports.db") as db:
+                    await db.execute("UPDATE reports SET forum_thread_id=NULL, forum_msg_id=NULL WHERE report_id=?", (report_id,))
+                    await db.commit()
+            # If no forum post existed yet (case was never put Under Review), there's nothing to delete
+        elif not forum_thread_id and forum_channel_cache:
             try:
                 forum_thread = await forum_channel_cache.create_thread(name=thread_name, embed=embed)
                 if isinstance(forum_thread, tuple):
@@ -711,17 +748,17 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
                     base_msg += f" ({consent_notes})"
                 embed.add_field(name="⚠️ LEGAL REVIEW REQUIRED ⚠️", value=base_msg, inline=False)
 
-        global secure_channel_cache, conversation_forum_channel_cache
+        global secure_channel_cache, replies_channel_cache
         if not secure_channel_cache:
             secure_channel_cache = bot.get_channel(SECURE_CHANNEL_ID) or await bot.fetch_channel(SECURE_CHANNEL_ID)
 
-        if not conversation_forum_channel_cache and CONVERSATION_FORUM_CHANNEL_ID != 0:
+        if not replies_channel_cache and REPLIES_CHANNEL_ID != 0:
             try:
-                conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+                replies_channel_cache = bot.get_channel(REPLIES_CHANNEL_ID) or await bot.fetch_channel(REPLIES_CHANNEL_ID)
             except discord.NotFound:
-                log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found during report creation!")
+                log.error("ERROR: REPLIES_CHANNEL_ID not found during report creation!")
             except discord.Forbidden:
-                log.error("ERROR: Bot lacks permissions to view CONVERSATION_FORUM_CHANNEL_ID.")
+                log.error("ERROR: Bot lacks permissions to view REPLIES_CHANNEL_ID.")
 
         async with aiosqlite.connect("reports.db") as db:
             try:
@@ -751,14 +788,14 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
             return await interaction.followup.send("We ran into a technical issue submitting this to the team. Please try again later.", ephemeral=True)
 
         # Create Conversation Thread dynamically if cache exists or was just fetched
-        if conversation_forum_channel_cache:
+        if replies_channel_cache:
             try:
-                conv_thread_name = f"{self.online_name.value[:80]} - {report_id}"
+                conv_thread_name = f"{report_id} - {self.online_name.value[:80]}"
                 reporter_info = "Anonymous" if self.is_anonymous else f"{interaction.user.mention} ({interaction.user.name})"
                 init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{report_id}`"
                 
                 # Discord API requires a starting message when creating a forum thread
-                conv_thread = await conversation_forum_channel_cache.create_thread(name=conv_thread_name, content=init_content)
+                conv_thread = await replies_channel_cache.create_thread(name=conv_thread_name, content=init_content)
                 
                 if isinstance(conv_thread, tuple):
                     conv_thread = conv_thread[0]
@@ -772,8 +809,8 @@ class ReportModal(discord.ui.Modal, title='Predator Report Form'):
             except Exception as e:
                 log.error(f"Failed to create conversation thread for {report_id}: {e}")
         else:
-            if CONVERSATION_FORUM_CHANNEL_ID == 0:
-                log.error("CONVERSATION_FORUM_CHANNEL_ID is 0 or missing from .env. Replies will fall back to secure channel.")
+            if REPLIES_CHANNEL_ID == 0:
+                log.error("REPLIES_CHANNEL_ID is 0 or missing from .env. Replies will fall back to secure channel.")
             else:
                 log.error("Conversation Forum Channel cache is None. Check bot permissions.")
 
@@ -875,13 +912,22 @@ class IssueView(discord.ui.View):
     async def false_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_moderator(interaction):
             return await interaction.response.send_message("You do not have permission to use this.", ephemeral=True)
-        
-        for child in self.children: child.disabled = True
-        embed = interaction.message.embeds[0]
-        embed.color = discord.Color.dark_grey()
-        embed.title = "❌ Issue Marked as False/Invalid"
-        await interaction.message.edit(embed=embed, view=self)
-        await interaction.response.send_message("Issue marked as false/invalid.", ephemeral=True)
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            if isinstance(interaction.channel, discord.Thread):
+                # Issue was posted as a forum post - delete the whole thread/post
+                await interaction.channel.delete()
+            else:
+                await interaction.message.delete()
+        except discord.NotFound:
+            pass
+        except Exception as e:
+            log.error(f"Failed to delete invalid issue post: {e}")
+            return await interaction.followup.send("Failed to delete the issue post.", ephemeral=True)
+
+        await interaction.followup.send("Issue marked as false/invalid and deleted.", ephemeral=True)
 
 
 class ReportGroup(app_commands.Group):
@@ -1013,25 +1059,25 @@ async def reply(interaction: discord.Interaction, report_id: str, message: str):
 
     # 2. Send to conversation thread (with mod name, rephrased)
     # Auto-create conversation thread if it's missing
-    global conversation_forum_channel_cache
-    if not conversation_forum_channel_cache and CONVERSATION_FORUM_CHANNEL_ID != 0:
+    global replies_channel_cache
+    if not replies_channel_cache and REPLIES_CHANNEL_ID != 0:
         try:
-            conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+            replies_channel_cache = bot.get_channel(REPLIES_CHANNEL_ID) or await bot.fetch_channel(REPLIES_CHANNEL_ID)
         except discord.NotFound:
-            log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found during /reply!")
+            log.error("ERROR: REPLIES_CHANNEL_ID not found during /reply!")
 
-    if not conv_thread_id and conversation_forum_channel_cache:
+    if not conv_thread_id and replies_channel_cache:
         try:
             async with aiosqlite.connect("reports.db") as db:
                 async with db.execute("SELECT reported_handle, is_anonymous FROM reports WHERE report_id=?", (report_id,)) as cur:
                     row = await cur.fetchone()
                     if row:
                         reported_handle, is_anon = row
-                        conv_thread_name = f"{reported_handle[:80] if reported_handle else 'Unknown'} - {report_id}"
+                        conv_thread_name = f"{report_id} - {reported_handle[:80] if reported_handle else 'Unknown'}"
                         reporter_info = "Anonymous" if is_anon else f"<@{reporter_id}>"
                         init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{report_id}`"
                         
-                        conv_thread = await conversation_forum_channel_cache.create_thread(name=conv_thread_name, content=init_content)
+                        conv_thread = await replies_channel_cache.create_thread(name=conv_thread_name, content=init_content)
                         if isinstance(conv_thread, tuple):
                             conv_thread = conv_thread[0]
                         conv_thread_id = conv_thread.id
@@ -1121,25 +1167,25 @@ async def on_message(message: discord.Message):
                                 content = f"💬 **Reply from {display_name} ({r_id})**:\n{message.content}"
                                 
                                 # Auto-create conversation thread if it's missing
-                                global conversation_forum_channel_cache
-                                if not conversation_forum_channel_cache and CONVERSATION_FORUM_CHANNEL_ID != 0:
+                                global replies_channel_cache
+                                if not replies_channel_cache and REPLIES_CHANNEL_ID != 0:
                                     try:
-                                        conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+                                        replies_channel_cache = bot.get_channel(REPLIES_CHANNEL_ID) or await bot.fetch_channel(REPLIES_CHANNEL_ID)
                                     except discord.NotFound:
-                                        log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found during on_message!")
+                                        log.error("ERROR: REPLIES_CHANNEL_ID not found during on_message!")
 
-                                if not conv_thread_id and conversation_forum_channel_cache:
+                                if not conv_thread_id and replies_channel_cache:
                                     try:
                                         async with aiosqlite.connect("reports.db") as db2:
                                             async with db2.execute("SELECT reported_handle, is_anonymous FROM reports WHERE report_id=?", (r_id,)) as cur3:
                                                 r3 = await cur3.fetchone()
                                                 if r3:
                                                     reported_handle, is_anon_temp = r3
-                                                    conv_thread_name = f"{reported_handle[:80] if reported_handle else 'Unknown'} - {r_id}"
+                                                    conv_thread_name = f"{r_id} - {reported_handle[:80] if reported_handle else 'Unknown'}"
                                                     reporter_info = "Anonymous" if is_anon_temp else f"{message.author.mention} ({message.author.name})"
                                                     init_content = f"Conversations between us and the victim.\n**Victim:** {reporter_info}\n**Report ID:** `{r_id}`"
                                                     
-                                                    conv_thread = await conversation_forum_channel_cache.create_thread(name=conv_thread_name, content=init_content)
+                                                    conv_thread = await replies_channel_cache.create_thread(name=conv_thread_name, content=init_content)
                                                     if isinstance(conv_thread, tuple):
                                                         conv_thread = conv_thread[0]
                                                     conv_thread_id = conv_thread.id
@@ -1409,7 +1455,7 @@ async def on_ready():
     bot.add_view(TriageView())
     bot.add_view(IssueView()) 
     
-    global secure_channel_cache, mod_log_channel_cache, issue_channel_cache, forum_channel_cache, conversation_forum_channel_cache, commands_synced
+    global secure_channel_cache, mod_log_channel_cache, issue_channel_cache, forum_channel_cache, replies_channel_cache, commands_synced
     
     try:
         secure_channel_cache = bot.get_channel(SECURE_CHANNEL_ID) or await bot.fetch_channel(SECURE_CHANNEL_ID)
@@ -1439,13 +1485,16 @@ async def on_ready():
         except discord.Forbidden:
             log.error("ERROR: Bot lacks permissions to view FORUM_CHANNEL_ID.")
 
-    if CONVERSATION_FORUM_CHANNEL_ID != 0:
+    if REPLIES_CHANNEL_ID != 0:
         try:
-            conversation_forum_channel_cache = bot.get_channel(CONVERSATION_FORUM_CHANNEL_ID) or await bot.fetch_channel(CONVERSATION_FORUM_CHANNEL_ID)
+            replies_channel_cache = bot.get_channel(REPLIES_CHANNEL_ID) or await bot.fetch_channel(REPLIES_CHANNEL_ID)
         except discord.NotFound:
-            log.error("ERROR: CONVERSATION_FORUM_CHANNEL_ID not found!")
+            log.error("ERROR: REPLIES_CHANNEL_ID not found!")
         except discord.Forbidden:
-            log.error("ERROR: Bot lacks permissions to view CONVERSATION_FORUM_CHANNEL_ID.")
+            log.error("ERROR: Bot lacks permissions to view REPLIES_CHANNEL_ID.")
+
+        if replies_channel_cache:
+            await lock_channel_to_admins(replies_channel_cache)
     
     if not cleanup_db.is_running():
         cleanup_db.start()
