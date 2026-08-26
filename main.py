@@ -1,8 +1,8 @@
 # ==============================================================================
 # Xabat - Predator Reporting & Triage Bot
-# Copyright (C) [Year] [Your Name/GitHub Username]
+# Copyright (C) 2026 skywalker14017
 #
-# Licensed under the Xabat Ethical Source License (XESL) v1.2.
+# Licensed under the Xabat Ethical Source License (XESL) v1.1.
 # ==============================================================================
 
 import discord
