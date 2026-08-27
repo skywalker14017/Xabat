@@ -14,6 +14,7 @@ import aiosqlite
 import secrets
 import asyncio
 import io
+import sys
 import tempfile
 import logging
 import threading
@@ -31,17 +32,6 @@ log = logging.getLogger("xabat")
 
 load_dotenv()
 
-try:
-    from nudenet import NudeDetector
-    nude_detector = NudeDetector()
-    log.info("NudeNet AI loaded successfully.")
-except ImportError:
-    log.warning("NudeNet is not installed! Please run 'pip install nudenet'")
-    nude_detector = None
-except Exception as e:
-    log.warning(f"Failed to initialize NudeNet: {e}")
-    nude_detector = None
-
 def get_env_var(key: str) -> str:
     val = os.getenv(key)
     if not val:
@@ -56,6 +46,17 @@ GUILD_ID = int(os.getenv("GUILD_ID", "0").strip())
 ISSUE_CHANNEL_ID = int(os.getenv("ISSUE_CHANNEL_ID", "0").strip())     
 FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID", "0").strip())     
 REPLIES_CHANNEL_ID = int(os.getenv("REPLIES_CHANNEL_ID", "0").strip())
+
+try:
+    from nudenet import NudeDetector
+    nude_detector = NudeDetector()
+    log.info("NudeNet AI loaded successfully.")
+except ImportError:
+    log.critical("NudeNet is not installed. Xabat requires it to run. Run 'pip install nudenet'.")
+    sys.exit(1)
+except Exception as e:
+    log.critical(f"NudeNet failed to initialize ({e}). Xabat requires it to run.")
+    sys.exit(1)
 
 UPLOAD_SESSION_TIMEOUT = 600        
 UPLOAD_SESSION_HARD_LIMIT = 3600   
