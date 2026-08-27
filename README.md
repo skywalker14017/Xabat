@@ -7,6 +7,8 @@
 ![discord.py](https://img.shields.io/badge/discord.py-2.x-ff79c6)
 ![Status](https://img.shields.io/badge/status-active-46e3b7)
 
+[![Invite Xabat](https://img.shields.io/badge/Invite%20Xabat-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1534190800462807153&permissions=395673988176&integration_type=0&scope=bot)
+
 > **If someone is in immediate danger, this bot is not the answer.** Contact local emergency services first. Xabat is a triage tool, not a 911 replacement.
 
 ## Table of Contents
